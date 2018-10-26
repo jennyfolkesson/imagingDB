@@ -1,4 +1,6 @@
 import nose.tools
+import unittest
+from unittest.mock import patch
 
 import imaging_db.images.file_splitter as file_splitter
 
@@ -67,3 +69,33 @@ def test_validate_global_meta_missing():
     }
     file_splitter.validate_global_meta(global_meta)
 
+
+class TestFileSplitter(unittest.TestCase):
+    """
+    Abstract classes can be tested with Unittest's mock patch
+    """
+
+    @patch.multiple(file_splitter.FileSplitter, __abstractmethods__=set())
+    def setUp(self):
+        self.test_path = "/datapath/testfile.tif"
+        self.test_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.mock_inst = file_splitter.FileSplitter(
+            data_path=self.test_path,
+            s3_dir=self.test_dir,
+        )
+
+    def test_init(self):
+        nose.tools.assert_equal(self.mock_inst.data_path, self.test_path)
+        nose.tools.assert_equal(self.mock_inst.s3_dir, self.test_dir)
+        nose.tools.assert_equal(self.mock_inst.int2str_len, 3)
+        nose.tools.assert_equal(self.mock_inst.file_format, '.png')
+
+    def test_get_imname(self):
+        meta_row = {
+            "channel_idx": 6,
+            "slice_idx": 13,
+            "time_idx": 5,
+            "pos_idx": 7,
+        }
+        im_name = self.mock_inst._get_imname(meta_row=meta_row)
+        nose.tools.assert_equal(im_name, 'im_c006_z013_t005_p007.png')
