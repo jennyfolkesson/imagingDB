@@ -181,7 +181,7 @@ def upload_data_and_update_db(args):
                 s3_dir=s3_dir,
                 override=args.override,
                 file_format=FRAME_FILE_FORMAT,
-                nbr_workers=nbr_workers,
+                nbr_workers=args.nbr_workers,
             )
             # Get kwargs if any
             kwargs = {}
