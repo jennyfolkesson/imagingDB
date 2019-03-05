@@ -1,3 +1,4 @@
+import concurrent.futures
 import glob
 import natsort
 import numpy as np
@@ -6,7 +7,9 @@ import tifffile
 
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_validator as json_validator
+import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.utils.aux_utils as aux_utils
+import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -31,6 +34,13 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                          int2str_len=int2str_len)
 
         self.channel_names = []
+        global data_uploader
+        data_uploader = s3_storage.DataStorage(
+            s3_dir=self.s3_dir,
+            nbr_workers=self.nbr_workers,
+        )
+        if not override:
+            data_uploader.assert_unique_id()
 
     def set_frame_info(self, meta_summary):
         """
@@ -67,12 +77,29 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         parse_func(file_name, meta_row, self.channel_names)
 
         meta_row["file_name"] = self._get_imname(meta_row)
-        meta_row["sha256"] = self._generate_hash(self.im_stack)[0]
-
-        # Make sure meta row is properly filled
-        assert None not in meta_row.values(), \
-            "meta row has not been populated correctly"
         return meta_row
+
+    def serialize_upload(self, file_tuple):
+        frame_path, file_name = file_tuple
+        imtif = tifffile.TiffFile(frame_path)
+        im = imtif.asarray()
+        tiftags = imtif.pages[0].tags
+        # Get all frame specific metadata
+        dict_i = {}
+        nonpicklable = {'IJMetadata', 'Compression', 'PhotometricInterpretation',
+                        'PlanarConfiguration', 'Predictor'}
+        for t in tiftags.keys():
+            if t not in nonpicklable:
+                dict_i[t] = tiftags[t].value
+
+        sha256 = meta_utils.gen_sha256(im)
+        im_bytes = im_utils.serialize_im(im, self.file_format)
+
+        data_uploader.upload_serialized_im(
+            file_name=file_name,
+            im_bytes= im_bytes,
+        )
+        return sha256, dict_i
 
     def get_frames_and_metadata(self, filename_parser='parse_idx_from_name'):
         """
@@ -111,33 +138,24 @@ class TifFolderSplitter(file_splitter.FileSplitter):
             self.global_json = {}
 
         self.set_frame_info(self.global_json["Summary"])
-        # Create empty image stack where last dimension is 1 for upload_frames
-        self.im_stack = np.empty((self.frame_shape[0],
-                                  self.frame_shape[1],
-                                  self.im_colors,
-                                  1),
-                                 dtype=self.bit_depth)
 
         self.frames_meta = meta_utils.make_dataframe(nbr_frames=nbr_frames)
         self.frames_json = []
-        # Loop over all the frames to get data and metadata
+        # Loop over all the frames to get metadata
         for i, frame_path in enumerate(frame_paths):
-            imtif = tifffile.TiffFile(frame_path)
-            self.im_stack[..., 0] = np.atleast_3d(imtif.asarray())
-            tiftags = imtif.pages[0].tags
-            # Get all frame specific metadata
-            dict_i = {}
-            for t in tiftags.keys():
-                dict_i[t] = tiftags[t].value
-            self.frames_json.append(dict_i)
             # Get structured frames metadata
             self.frames_meta.loc[i] = self._set_frame_meta(
                 parse_func=parse_func,
                 file_name=frame_path,
             )
-            self.upload_stack(
-                file_names=[self.frames_meta.loc[i, "file_name"]],
-                im_stack=self.im_stack,
-            )
+
+        file_names = self.frames_meta['file_name']
+        with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
+            res = ex.map(self.serialize_upload, zip(frame_paths, file_names))
+
+        for i, (sha256, dict_i) in enumerate(res):
+            self.frames_json.append(dict_i)
+            self.frames_meta.loc[i, 'sha256'] = sha256
+        self.frames_meta.to_csv(os.path.join(self.data_path, 'frames_output2.csv'))
         # Set global metadata
         self.set_global_meta(nbr_frames=nbr_frames)
