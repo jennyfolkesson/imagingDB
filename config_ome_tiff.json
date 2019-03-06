@@ -1,0 +1,6 @@
+{
+    "upload_type": "frames",
+    "frames_format": "ome_tiff",
+    "microscope": "",
+    "schema_filename": "metadata_schema.json"
+}

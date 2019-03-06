@@ -1,7 +1,6 @@
 import concurrent.futures
 import glob
 import natsort
-import numpy as np
 import os
 import tifffile
 
@@ -23,8 +22,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
-                 int2str_len=3
-                 ):
+                 int2str_len=3):
         
         super().__init__(data_path,
                          s3_dir,
@@ -80,6 +78,14 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         return meta_row
 
     def serialize_upload(self, file_tuple):
+        """
+        Given a path for a tif file and its database file name,
+        read the file, serialize it and upload it. Extract file metadata.
+
+        :param tuple file_tuple: (Path to tif file, database file name)
+        :return str sha256: Checksum for image
+        :return dict dict_i: JSON metadata for frame
+        """
         frame_path, file_name = file_tuple
         imtif = tifffile.TiffFile(frame_path)
         im = imtif.asarray()
@@ -97,7 +103,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
 
         data_uploader.upload_serialized_im(
             file_name=file_name,
-            im_bytes= im_bytes,
+            im_bytes=im_bytes,
         )
         return sha256, dict_i
 
@@ -148,14 +154,13 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                 parse_func=parse_func,
                 file_name=frame_path,
             )
-
+        # Use multiprocessing for more efficient file read and upload
         file_names = self.frames_meta['file_name']
         with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
             res = ex.map(self.serialize_upload, zip(frame_paths, file_names))
-
+        # Collect metadata for each uploaded file
         for i, (sha256, dict_i) in enumerate(res):
             self.frames_json.append(dict_i)
             self.frames_meta.loc[i, 'sha256'] = sha256
-        self.frames_meta.to_csv(os.path.join(self.data_path, 'frames_output2.csv'))
         # Set global metadata
         self.set_global_meta(nbr_frames=nbr_frames)

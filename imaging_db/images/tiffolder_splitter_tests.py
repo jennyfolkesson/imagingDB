@@ -40,6 +40,7 @@ class TestTifFolderSplitter(unittest.TestCase):
             for z in range(2):
                 file_name = 'img_{}_t000_p050_z00{}.tif'.format(c, z)
                 file_path = os.path.join(self.temp_path, file_name)
+                ijmeta = {"Info": json.dumps({"c": c, "z": z})}
                 tifffile.imsave(file_path,
                                 self.im + 5000 * z,
                                 ijmetadata=ijmeta,
@@ -60,7 +61,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Setup mock S3 bucket
         self.mock = mock_s3()
         self.mock.start()
-        self.conn = boto3.resource('s3', region_name='us-east-1')
+        self.conn = boto3.resource('s3', region_name='us-west-1')
         self.bucket_name = 'czbiohub-imaging'
         self.conn.create_bucket(Bucket=self.bucket_name)
         # Instantiate file parser class
@@ -118,11 +119,12 @@ class TestTifFolderSplitter(unittest.TestCase):
     def test_get_frames_json(self):
         frames_json = self.frames_inst.get_frames_json()
         self.assertEqual(len(frames_json), 6)
-        for i in range(len(frames_json)):
+        for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             frame_i = frames_json[i]
+            meta_info = json.loads(frame_i['IJMetadata']['Info'])
             self.assertDictEqual(
-                json.loads(frame_i['IJMetadata']['Info']),
-                {"testkey": "testvalue"},
+                meta_info,
+                {"c": c, "z": z},
             )
             frame_i['BitsPerSample'] = 16
             frame_i['ImageWidth'] = 15
