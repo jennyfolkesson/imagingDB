@@ -2,6 +2,7 @@ import boto3
 import itertools
 import json
 from moto import mock_s3
+import natsort
 import nose.tools
 import numpy as np
 import numpy.testing
@@ -31,8 +32,6 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Temporary frame
         self.im = np.ones((10, 15), dtype=np.uint16)
         self.im[2:5, 3:12] = 10000
-        # File metadata
-        ijmeta = {"Info": json.dumps({"testkey": "testvalue"})}
         # Save test tif files
         self.channel_names = ['phase', 'brightfield', '666']
         # Write files in dir
@@ -61,7 +60,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Setup mock S3 bucket
         self.mock = mock_s3()
         self.mock.start()
-        self.conn = boto3.resource('s3', region_name='us-west-1')
+        self.conn = boto3.resource('s3', region_name='us-east-1')
         self.bucket_name = 'czbiohub-imaging'
         self.conn.create_bucket(Bucket=self.bucket_name)
         # Instantiate file parser class
@@ -73,7 +72,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         )
         # Upload data
         self.frames_inst.get_frames_and_metadata(
-            filename_parser='parse_sms_name'
+            filename_parser='parse_sms_name',
         )
 
     def tearDown(self):
@@ -118,13 +117,16 @@ class TestTifFolderSplitter(unittest.TestCase):
 
     def test_get_frames_json(self):
         frames_json = self.frames_inst.get_frames_json()
+        # Channels will be sorted
+        sorted_channels = natsort.natsorted(self.channel_names)
         self.assertEqual(len(frames_json), 6)
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             frame_i = frames_json[i]
+            print(i, c, z)
             meta_info = json.loads(frame_i['IJMetadata']['Info'])
             self.assertDictEqual(
                 meta_info,
-                {"c": c, "z": z},
+                {"c": sorted_channels[c], "z": z},
             )
             frame_i['BitsPerSample'] = 16
             frame_i['ImageWidth'] = 15
@@ -182,4 +184,3 @@ class TestTifFolderSplitter(unittest.TestCase):
             # Assert that contents are the same
             self.assertEqual(im.dtype, np.uint16)
             numpy.testing.assert_array_equal(im, self.im + 5000 * z)
-

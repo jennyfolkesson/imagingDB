@@ -1,5 +1,6 @@
 import concurrent.futures
 import glob
+import json
 import natsort
 import os
 import tifffile
@@ -92,11 +93,8 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         tiftags = imtif.pages[0].tags
         # Get all frame specific metadata
         dict_i = {}
-        nonpicklable = {'IJMetadata', 'Compression', 'PhotometricInterpretation',
-                        'PlanarConfiguration', 'Predictor'}
         for t in tiftags.keys():
-            if t not in nonpicklable:
-                dict_i[t] = tiftags[t].value
+            dict_i[t] = tiftags[t].value
 
         sha256 = meta_utils.gen_sha256(im)
         im_bytes = im_utils.serialize_im(im, self.file_format)
@@ -105,7 +103,8 @@ class TifFolderSplitter(file_splitter.FileSplitter):
             file_name=file_name,
             im_bytes=im_bytes,
         )
-        return sha256, dict_i
+        # Do a json dumps otherwise some metadata won't pickle
+        return sha256, json.dumps(dict_i)
 
     def get_frames_and_metadata(self, filename_parser='parse_idx_from_name'):
         """
@@ -160,7 +159,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
             res = ex.map(self.serialize_upload, zip(frame_paths, file_names))
         # Collect metadata for each uploaded file
         for i, (sha256, dict_i) in enumerate(res):
-            self.frames_json.append(dict_i)
+            self.frames_json.append(json.loads(dict_i))
             self.frames_meta.loc[i, 'sha256'] = sha256
         # Set global metadata
         self.set_global_meta(nbr_frames=nbr_frames)
