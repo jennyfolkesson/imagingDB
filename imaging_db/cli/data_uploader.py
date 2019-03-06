@@ -3,7 +3,6 @@
 import argparse
 import os
 import pandas as pd
-from tqdm import tqdm
 import time
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_session as db_session
@@ -133,11 +132,6 @@ def upload_data_and_update_db(args):
             class_dict[frames_format],
         )
 
-    # # Create the progress bar object
-    # file_prog = tqdm(files_data.iterrows(),
-    #                  total=files_data.shape[0],
-    #                  desc='Dataset')
-
     # Upload all files
     for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
@@ -197,20 +191,20 @@ def upload_data_and_update_db(args):
             # Extract metadata and split file into frames
             frames_inst.get_frames_and_metadata(**kwargs)
 
-            # # Add frames metadata to database
-            # try:
-            #     db_inst.insert_frames(
-            #         description=description,
-            #         frames_meta=frames_inst.get_frames_meta(),
-            #         frames_json_meta=frames_inst.get_frames_json(),
-            #         global_meta=frames_inst.get_global_meta(),
-            #         global_json_meta=frames_inst.get_global_json(),
-            #         microscope=microscope,
-            #         parent_dataset=parent_dataset_id,
-            #     )
-            #
-            # except AssertionError as e:
-            #     print("Data set {} already in DB".format(dataset_serial), e)
+            # Add frames metadata to database
+            try:
+                db_inst.insert_frames(
+                    description=description,
+                    frames_meta=frames_inst.get_frames_meta(),
+                    frames_json_meta=frames_inst.get_frames_json(),
+                    global_meta=frames_inst.get_global_meta(),
+                    global_json_meta=frames_inst.get_global_json(),
+                    microscope=microscope,
+                    parent_dataset=parent_dataset_id,
+                )
+
+            except AssertionError as e:
+                print("Data set {} already in DB".format(dataset_serial), e)
         # File upload
         else:
             # Just upload file without opening it
@@ -248,5 +242,4 @@ if __name__ == '__main__':
     args = parse_args()
     t0 = time.time()
     upload_data_and_update_db(args)
-    print('----------------')
     print("Upload time: {:.2f}".format(time.time() - t0))
