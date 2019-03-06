@@ -122,7 +122,6 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.assertEqual(len(frames_json), 6)
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             frame_i = frames_json[i]
-            print(i, c, z)
             meta_info = json.loads(frame_i['IJMetadata']['Info'])
             self.assertDictEqual(
                 meta_info,

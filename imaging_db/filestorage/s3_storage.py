@@ -48,29 +48,23 @@ class DataStorage:
         serialized_ims = []
         keys = []
         for i, file_name in enumerate(file_names):
-            # Clear the terminal message
-            # slice_prog_bar.write(prefix+'')
-
+            # Create key
             key = "/".join([self.s3_dir, file_name])
-            keys.append(key)
-
             # Make sure image doesn't already exist
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
                 Prefix=key,
             )
-            try:
-                assert response['KeyCount'] == 0, \
-                    "Key already exists on S3: {}".format(key)
-            except AssertionError as e:
-                print("Key already exists, continuing")
-
-            # Serialize image
-            im_bytes = im_utils.serialize_im(
-                im=im_stack[..., i],
-                file_format=file_format,
-            )
-            serialized_ims.append(im_bytes)
+            if response['KeyCount'] == 0:
+                # Serialize image
+                im_bytes = im_utils.serialize_im(
+                    im=im_stack[..., i],
+                    file_format=file_format,
+                )
+                serialized_ims.append(im_bytes)
+                keys.append(key)
+            else:
+                print("Key {} already exists, next.".format(key))
 
         with concurrent.futures.ThreadPoolExecutor() as ex:
             {ex.submit(self.upload_serialized, key_byte_tuple):
@@ -95,30 +89,29 @@ class DataStorage:
 
     def upload_serialized_im(self, file_name, im_bytes):
         """
-        Upload serialized image. The tuple is to simplify threading executor
-        submission.
+        Upload serialized image to S3 storage after checking that key
+        doesn't already exist.
 
-        :param tuple key_byte_tuple: Containing key and byte string
+        :param str file_name: File name for image
+        :param str im_bytes: Serializes image
         """
         key = "/".join([self.s3_dir, file_name])
         # Create new client
         s3_client = boto3.client('s3')
         # Make sure image doesn't already exist
-        response = self.s3_client.list_objects_v2(
+        response = s3_client.list_objects_v2(
             Bucket=self.bucket_name,
             Prefix=key,
         )
-        try:
-            assert response['KeyCount'] == 0, \
-                "Key already exists on S3: {}".format(key)
-        except AssertionError as e:
-            print("Key already exists, continuing")
-        # Upload slice to S3
-        s3_client.put_object(
-            Bucket=self.bucket_name,
-            Key=key,
-            Body=im_bytes,
-        )
+        if response['KeyCount'] == 0:
+            # Upload slice to S3
+            s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=im_bytes,
+            )
+        else:
+            print("Key {} already exists, next".format(key))
 
     def upload_file(self, file_name):
         """

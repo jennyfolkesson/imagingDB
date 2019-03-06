@@ -33,6 +33,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                          int2str_len=int2str_len)
 
         self.channel_names = []
+
         global data_uploader
         data_uploader = s3_storage.DataStorage(
             s3_dir=self.s3_dir,
@@ -98,7 +99,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
 
         sha256 = meta_utils.gen_sha256(im)
         im_bytes = im_utils.serialize_im(im, self.file_format)
-
+        # Upload to S3 with global client
         data_uploader.upload_serialized_im(
             file_name=file_name,
             im_bytes=im_bytes,
