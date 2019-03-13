@@ -165,12 +165,6 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.assertEqual(meta_row['slice_idx'], 30)
         self.assertEqual(meta_row['pos_idx'], 40)
 
-    @nose.tools.raises(AttributeError)
-    def test_get_frames_and_metadata_no_parser(self):
-        self.frames_inst.get_frames_and_metadata(
-            filename_parser='nonexisting_function',
-        )
-
     def test_get_frames_and_metadata(self):
         # Download uploaded data and compare to self.im
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
@@ -183,3 +177,9 @@ class TestTifFolderSplitter(unittest.TestCase):
             # Assert that contents are the same
             self.assertEqual(im.dtype, np.uint16)
             numpy.testing.assert_array_equal(im, self.im + 5000 * z)
+
+    @nose.tools.raises(AttributeError)
+    def test_get_frames_and_metadata_no_parser(self):
+        self.frames_inst.get_frames_and_metadata(
+            filename_parser='nonexisting_function',
+        )

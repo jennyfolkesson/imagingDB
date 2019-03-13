@@ -79,30 +79,31 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         meta_row["file_name"] = self._get_imname(meta_row)
         return meta_row
 
-    def serialize_upload(self, file_tuple):
+    def serialize_upload(self, frame_path, file_name):
         """
         Given a path for a tif file and its database file name,
         read the file, serialize it and upload it. Extract file metadata.
 
-        :param tuple file_tuple: (Path to tif file, database file name)
+        :param str frame_path: Path to tif file
+        :param str file_name: Image file name for storage/database
         :return str sha256: Checksum for image
         :return dict dict_i: JSON metadata for frame
         """
-        frame_path, file_name = file_tuple
-        imtif = tifffile.TiffFile(frame_path)
-        im = imtif.asarray()
-        tiftags = imtif.pages[0].tags
+        # frame_path, file_name = file_tuple
+        im = tifffile.TiffFile(frame_path)
+        tiftags = im.pages[0].tags
         # Get all frame specific metadata
         dict_i = {}
         for t in tiftags.keys():
             dict_i[t] = tiftags[t].value
 
+        im = im.asarray()
         sha256 = meta_utils.gen_sha256(im)
-        im_bytes = im_utils.serialize_im(im, self.file_format)
         # Upload to S3 with global client
-        data_uploader.upload_serialized_im(
+        data_uploader.upload_im(
             file_name=file_name,
-            im_bytes=im_bytes,
+            im=im,
+            file_format=self.file_format
         )
         # Do a json dumps otherwise some metadata won't pickle
         return sha256, json.dumps(dict_i)
@@ -157,7 +158,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         # Use multiprocessing for more efficient file read and upload
         file_names = self.frames_meta['file_name']
         with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
-            res = ex.map(self.serialize_upload, zip(frame_paths, file_names))
+            res = ex.map(self.serialize_upload, frame_paths, file_names)
         # Collect metadata for each uploaded file
         for i, (sha256, dict_i) in enumerate(res):
             self.frames_json.append(json.loads(dict_i))

@@ -87,13 +87,14 @@ class DataStorage:
             Body=im_bytes,
         )
 
-    def upload_serialized_im(self, file_name, im_bytes):
+    def upload_im(self, file_name, im, file_format='.png'):
         """
         Upload serialized image to S3 storage after checking that key
         doesn't already exist.
 
         :param str file_name: File name for image
-        :param str im_bytes: Serializes image
+        :param str im: 2D image
+        :param str file_format: File format for serialization
         """
         key = "/".join([self.s3_dir, file_name])
         # Create new client
@@ -104,6 +105,7 @@ class DataStorage:
             Prefix=key,
         )
         if response['KeyCount'] == 0:
+            im_bytes = im_utils.serialize_im(im, file_format)
             # Upload slice to S3
             s3_client.put_object(
                 Bucket=self.bucket_name,
