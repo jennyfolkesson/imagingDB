@@ -79,17 +79,16 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         meta_row["file_name"] = self._get_imname(meta_row)
         return meta_row
 
-    def serialize_upload(self, frame_path, file_name):
+    def serialize_upload(self, frame_file_tuple):
         """
         Given a path for a tif file and its database file name,
         read the file, serialize it and upload it. Extract file metadata.
 
-        :param str frame_path: Path to tif file
-        :param str file_name: Image file name for storage/database
+        :param tuple frame_file_tuple: Path to tif file and S3 + DB file name
         :return str sha256: Checksum for image
         :return dict dict_i: JSON metadata for frame
         """
-        # frame_path, file_name = file_tuple
+        frame_path, file_name = frame_file_tuple
         im = tifffile.TiffFile(frame_path)
         tiftags = im.pages[0].tags
         # Get all frame specific metadata
@@ -158,7 +157,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         # Use multiprocessing for more efficient file read and upload
         file_names = self.frames_meta['file_name']
         with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
-            res = ex.map(self.serialize_upload, frame_paths, file_names)
+            res = ex.map(self.serialize_upload, zip(frame_paths, file_names))
         # Collect metadata for each uploaded file
         for i, (sha256, dict_i) in enumerate(res):
             self.frames_json.append(json.loads(dict_i))

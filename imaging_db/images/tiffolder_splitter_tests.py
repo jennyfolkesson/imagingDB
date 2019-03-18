@@ -10,6 +10,7 @@ import os
 from testfixtures import TempDirectory
 import tifffile
 import unittest
+from unittest.mock import patch
 
 import imaging_db.images.tiffolder_splitter as tif_splitter
 import imaging_db.metadata.json_validator as json_ops
@@ -18,12 +19,27 @@ import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
+def map_func(fn, *iterables):
+    """
+    Mocking out the map function of multiprocessing because moto
+    doesn't play well with multiprocessing
+    """
+    res = []
+    for i in iterables[0]:
+        temp_res = fn(i)
+        res.append(temp_res)
+    return res
+
+
 class TestTifFolderSplitter(unittest.TestCase):
 
-    def setUp(self):
+    @patch('concurrent.futures.ProcessPoolExecutor')
+    def setUp(self, MockPoolExecutor):
         """
         Set up temporary test directory and mock S3 bucket connection
         """
+        # Magic mocking of multiprocessing
+        MockPoolExecutor().__enter__().map = map_func
         # Mock S3 dir
         self.s3_dir = "raw_frames/SMS-2010-01-01-00-00-00-0001"
         # Create temporary directory and write temp image
