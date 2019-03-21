@@ -10,6 +10,6 @@ opencv-python
 pandas
 psycopg2-binary
 testfixtures
-tifffile
+tifffile==0.15.1
 sqlalchemy
 tqdm
