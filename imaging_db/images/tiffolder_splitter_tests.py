@@ -19,7 +19,7 @@ import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
-def map_func(fn, *iterables):
+def map_mock(fn, *iterables):
     """
     Mocking out the map function of multiprocessing because moto
     doesn't play well with multiprocessing
@@ -39,8 +39,8 @@ class TestTifFolderSplitter(unittest.TestCase):
         Set up temporary test directory and mock S3 bucket connection
         """
         # Magic mocking of multiprocessing
-        MockPoolExecutor().__enter__().map = map_func
-        # Mock S3 dir
+        MockPoolExecutor().__enter__().map = map_mock
+        # Mock S3 directory for upload
         self.s3_dir = "raw_frames/SMS-2010-01-01-00-00-00-0001"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()

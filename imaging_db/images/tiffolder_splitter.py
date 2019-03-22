@@ -9,7 +9,6 @@ import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_validator as json_validator
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.utils.aux_utils as aux_utils
-import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -102,7 +101,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         data_uploader.upload_im(
             file_name=file_name,
             im=im,
-            file_format=self.file_format
+            file_format=self.file_format,
         )
         # Do a json dumps otherwise some metadata won't pickle
         return sha256, json.dumps(dict_i)

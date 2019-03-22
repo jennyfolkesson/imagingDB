@@ -14,7 +14,7 @@ class TestFileSplitter(unittest.TestCase):
     def setUp(self):
         # Start mock instance
         self.test_path = "/datapath/testfile.tif"
-        self.test_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.s3_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
         self.mock_inst = file_splitter.FileSplitter(
             data_path=self.test_path,
             s3_dir=self.test_dir,
@@ -22,7 +22,7 @@ class TestFileSplitter(unittest.TestCase):
 
     def test_init(self):
         nose.tools.assert_equal(self.mock_inst.data_path, self.test_path)
-        nose.tools.assert_equal(self.mock_inst.s3_dir, self.test_dir)
+        nose.tools.assert_equal(self.mock_inst.s3_dir, self.s3_dir)
         nose.tools.assert_equal(self.mock_inst.int2str_len, 3)
         nose.tools.assert_equal(self.mock_inst.file_format, '.png')
 

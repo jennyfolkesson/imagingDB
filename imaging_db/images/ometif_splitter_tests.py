@@ -89,7 +89,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
         # Get path to json schema file
         dir_name = os.path.dirname(__file__)
         self.schema_file_path = os.path.realpath(
-            os.path.join(dir_name, '../../metadata_schema.json'),
+            os.path.join(dir_name, '..', '..', 'metadata_schema.json'),
         )
         # Upload data
         self.frames_inst.get_frames_and_metadata(
