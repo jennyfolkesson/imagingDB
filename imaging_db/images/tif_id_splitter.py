@@ -3,6 +3,7 @@ import numpy as np
 import os
 import tifffile
 
+import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
@@ -14,6 +15,28 @@ class TifIDSplitter(file_splitter.FileSplitter):
     metadata. It relies on the ImageDescription tag, which is assumed to
     be a sting encoding 'nchannels', ''nslices' etc.
     """
+    def __init__(self,
+                 data_path,
+                 s3_dir,
+                 override=False,
+                 file_format=".png",
+                 nbr_workers=4,
+                 int2str_len=3):
+
+        super().__init__(data_path,
+                         s3_dir,
+                         override=override,
+                         file_format=file_format,
+                         nbr_workers=nbr_workers,
+                         int2str_len=int2str_len)
+
+        self.data_uploader = s3_storage.DataStorage(
+            s3_dir=self.s3_dir,
+            nbr_workers=self.nbr_workers,
+        )
+        if not override:
+            self.data_uploader.assert_unique_id()
+
     def set_frame_info(self, page):
         """
         Sets frame shape, im_colors and bit_depth for the class
@@ -162,7 +185,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
 
         # Set global metadata
         self.set_global_meta(nbr_frames=nbr_frames)
-        self.upload_stack(
+        self.data_uploader.upload_frames(
             file_names=self.frames_meta["file_name"],
             im_stack=self.im_stack,
         )

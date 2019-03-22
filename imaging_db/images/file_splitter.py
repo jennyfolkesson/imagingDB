@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -25,7 +24,9 @@ class FileSplitter(metaclass=ABCMeta):
         """
         self.data_path = data_path
         self.s3_dir = s3_dir
+        self.override = override
         self.file_format = file_format
+        self.nbr_workers = nbr_workers
         self.int2str_len = int2str_len
         self.im_stack = None
         self.frames_meta = None
@@ -36,12 +37,6 @@ class FileSplitter(metaclass=ABCMeta):
         self.frame_shape = None
         self.im_colors = None
         self.bit_depth = None
-        self.data_uploader = s3_storage.DataStorage(
-            s3_dir=s3_dir,
-            nbr_workers=nbr_workers,
-        )
-        if not override:
-            self.data_uploader.assert_unique_id()
 
     def get_imstack(self):
         """
@@ -103,22 +98,6 @@ class FileSplitter(metaclass=ABCMeta):
         assert self.frames_json is not None, \
             "frames_json has no values yet"
         return self.frames_json
-
-    def upload_stack(self, file_names, im_stack):
-        """
-        Upload files to S3
-        :param list of strs file_names: File names
-        :param np.array im_stack: Image stack corresponding to file names
-        """
-        try:
-            # Upload stack frames to S3
-            self.data_uploader.upload_frames(
-                file_names=file_names,
-                im_stack=im_stack,
-            )
-        except AssertionError as e:
-            print("S3 upload failed: {}".format(e))
-            raise
 
     def _get_imname(self, meta_row):
         """

@@ -4,7 +4,6 @@ import numpy as np
 import os
 
 import imaging_db.utils.image_utils as im_utils
-from tqdm import tqdm
 
 
 class DataStorage:
@@ -49,33 +48,27 @@ class DataStorage:
         serialized_ims = []
         keys = []
         for i, file_name in enumerate(file_names):
-            # Clear the terminal message
-            # slice_prog_bar.write(prefix+'')
-
+            # Create key
             key = "/".join([self.s3_dir, file_name])
-            keys.append(key)
-
             # Make sure image doesn't already exist
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
                 Prefix=key,
             )
-            try:
-                assert response['KeyCount'] == 0, \
-                    "Key already exists on S3: {}".format(key)
-            except AssertionError as e:
-                print("Key already exists, continuing")
-
-            # Serialize image
-            im_bytes = im_utils.serialize_im(
-                im=im_stack[..., i],
-                file_format=file_format,
-            )
-            serialized_ims.append(im_bytes)
+            if response['KeyCount'] == 0:
+                # Serialize image
+                im_bytes = im_utils.serialize_im(
+                    im=im_stack[..., i],
+                    file_format=file_format,
+                )
+                serialized_ims.append(im_bytes)
+                keys.append(key)
+            else:
+                print("Key {} already exists, next.".format(key))
 
         with concurrent.futures.ThreadPoolExecutor() as ex:
             {ex.submit(self.upload_serialized, key_byte_tuple):
-                key_byte_tuple for key_byte_tuple in tqdm(zip(keys, serialized_ims))}
+                key_byte_tuple for key_byte_tuple in zip(keys, serialized_ims)}
 
     def upload_serialized(self, key_byte_tuple):
         """
@@ -93,6 +86,34 @@ class DataStorage:
             Key=key,
             Body=im_bytes,
         )
+
+    def upload_im(self, file_name, im, file_format='.png'):
+        """
+        Upload serialized image to S3 storage after checking that key
+        doesn't already exist.
+
+        :param str file_name: File name for image
+        :param str im: 2D image
+        :param str file_format: File format for serialization
+        """
+        key = "/".join([self.s3_dir, file_name])
+        # Create new client
+        s3_client = boto3.client('s3')
+        # Make sure image doesn't already exist
+        response = s3_client.list_objects_v2(
+            Bucket=self.bucket_name,
+            Prefix=key,
+        )
+        if response['KeyCount'] == 0:
+            im_bytes = im_utils.serialize_im(im, file_format)
+            # Upload slice to S3
+            s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=key,
+                Body=im_bytes,
+            )
+        else:
+            print("Key {} already exists, next".format(key))
 
     def upload_file(self, file_name):
         """
@@ -215,7 +236,7 @@ class DataStorage:
         """
         with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as ex:
             {ex.submit(self.download_file, file_name, dest_dir):
-                file_name for file_name in tqdm(file_names)}
+                file_name for file_name in file_names}
 
 
     def download_file(self, file_name, dest_dir):

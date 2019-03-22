@@ -2,6 +2,7 @@ import boto3
 import itertools
 import json
 from moto import mock_s3
+import natsort
 import nose.tools
 import numpy as np
 import numpy.testing
@@ -9,6 +10,7 @@ import os
 from testfixtures import TempDirectory
 import tifffile
 import unittest
+from unittest.mock import patch
 
 import imaging_db.images.tiffolder_splitter as tif_splitter
 import imaging_db.metadata.json_validator as json_ops
@@ -17,13 +19,28 @@ import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
+def map_mock(fn, *iterables):
+    """
+    Mocking out the map function of multiprocessing because moto
+    doesn't play well with multiprocessing
+    """
+    res = []
+    for i in iterables[0]:
+        temp_res = fn(i)
+        res.append(temp_res)
+    return res
+
+
 class TestTifFolderSplitter(unittest.TestCase):
 
-    def setUp(self):
+    @patch('concurrent.futures.ProcessPoolExecutor')
+    def setUp(self, MockPoolExecutor):
         """
         Set up temporary test directory and mock S3 bucket connection
         """
-        # Mock S3 dir
+        # Magic mocking of multiprocessing
+        MockPoolExecutor().__enter__().map = map_mock
+        # Mock S3 directory for upload
         self.s3_dir = "raw_frames/SMS-2010-01-01-00-00-00-0001"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
@@ -31,8 +48,6 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Temporary frame
         self.im = np.ones((10, 15), dtype=np.uint16)
         self.im[2:5, 3:12] = 10000
-        # File metadata
-        ijmeta = {"Info": json.dumps({"testkey": "testvalue"})}
         # Save test tif files
         self.channel_names = ['phase', 'brightfield', '666']
         # Write files in dir
@@ -40,6 +55,7 @@ class TestTifFolderSplitter(unittest.TestCase):
             for z in range(2):
                 file_name = 'img_{}_t000_p050_z00{}.tif'.format(c, z)
                 file_path = os.path.join(self.temp_path, file_name)
+                ijmeta = {"Info": json.dumps({"c": c, "z": z})}
                 tifffile.imsave(file_path,
                                 self.im + 5000 * z,
                                 ijmetadata=ijmeta,
@@ -72,7 +88,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         )
         # Upload data
         self.frames_inst.get_frames_and_metadata(
-            filename_parser='parse_sms_name'
+            filename_parser='parse_sms_name',
         )
 
     def tearDown(self):
@@ -117,12 +133,15 @@ class TestTifFolderSplitter(unittest.TestCase):
 
     def test_get_frames_json(self):
         frames_json = self.frames_inst.get_frames_json()
+        # Channels will be sorted
+        sorted_channels = natsort.natsorted(self.channel_names)
         self.assertEqual(len(frames_json), 6)
-        for i in range(len(frames_json)):
+        for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             frame_i = frames_json[i]
+            meta_info = json.loads(frame_i['IJMetadata']['Info'])
             self.assertDictEqual(
-                json.loads(frame_i['IJMetadata']['Info']),
-                {"testkey": "testvalue"},
+                meta_info,
+                {"c": sorted_channels[c], "z": z},
             )
             frame_i['BitsPerSample'] = 16
             frame_i['ImageWidth'] = 15
@@ -162,12 +181,6 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.assertEqual(meta_row['slice_idx'], 30)
         self.assertEqual(meta_row['pos_idx'], 40)
 
-    @nose.tools.raises(AttributeError)
-    def test_get_frames_and_metadata_no_parser(self):
-        self.frames_inst.get_frames_and_metadata(
-            filename_parser='nonexisting_function',
-        )
-
     def test_get_frames_and_metadata(self):
         # Download uploaded data and compare to self.im
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
@@ -181,3 +194,8 @@ class TestTifFolderSplitter(unittest.TestCase):
             self.assertEqual(im.dtype, np.uint16)
             numpy.testing.assert_array_equal(im, self.im + 5000 * z)
 
+    @nose.tools.raises(AttributeError)
+    def test_get_frames_and_metadata_no_parser(self):
+        self.frames_inst.get_frames_and_metadata(
+            filename_parser='nonexisting_function',
+        )

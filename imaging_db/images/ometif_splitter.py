@@ -1,10 +1,10 @@
 import glob
 import numpy as np
 import os
-import pandas as pd
 import tifffile
 from tqdm import tqdm
 
+import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_validator as json_validator
 import imaging_db.utils.meta_utils as meta_utils
@@ -14,6 +14,27 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
     """
     Subclass for reading and splitting ome tiff files
     """
+    def __init__(self,
+                 data_path,
+                 s3_dir,
+                 override=False,
+                 file_format=".png",
+                 nbr_workers=4,
+                 int2str_len=3):
+
+        super().__init__(data_path,
+                         s3_dir,
+                         override=override,
+                         file_format=file_format,
+                         nbr_workers=nbr_workers,
+                         int2str_len=int2str_len)
+
+        self.data_uploader = s3_storage.DataStorage(
+            s3_dir=self.s3_dir,
+            nbr_workers=self.nbr_workers,
+        )
+        if not override:
+            self.data_uploader.assert_unique_id()
 
     def set_frame_info(self, page):
         """
@@ -174,7 +195,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                 ignore_index=True,
             )
             # Upload frames in file to S3
-            self.upload_stack(
+            self.data_uploader.upload_frames(
                 file_names=list(file_meta["file_name"]),
                 im_stack=im_stack,
             )

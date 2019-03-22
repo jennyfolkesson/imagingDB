@@ -111,6 +111,14 @@ class TestDataStorage(unittest.TestCase):
         byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
         nose.tools.assert_equal(byte_string, self.im_encoded)
 
+    def test_upload_im(self):
+        data_storage = s3_storage.DataStorage(self.s3_dir, self.nbr_workers)
+        key = "/".join([self.s3_dir, self.im_name])
+        data_storage.upload_im(self.im_name, self.im)
+        byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
+        im = im_utils.deserialize_im(byte_string)
+        numpy.testing.assert_array_equal(im, self.im)
+
     def test_upload_file_get_im(self):
         data_storage = s3_storage.DataStorage(self.s3_dir, self.nbr_workers)
         data_storage.upload_file(file_name=self.file_path)

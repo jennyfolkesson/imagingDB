@@ -3,8 +3,7 @@
 import argparse
 import os
 import pandas as pd
-from tqdm import tqdm
-
+import time
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_session as db_session
 import imaging_db.filestorage.s3_storage as s3_storage
@@ -133,13 +132,8 @@ def upload_data_and_update_db(args):
             class_dict[frames_format],
         )
 
-    # Create the progress bar object
-    file_prog = tqdm(files_data.iterrows(),
-                     total=files_data.shape[0],
-                     desc='Dataset')
-
     # Upload all files
-    for file_nbr, row in file_prog:
+    for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
         dataset_serial = row.dataset_id
         try:
@@ -246,4 +240,6 @@ def upload_data_and_update_db(args):
 
 if __name__ == '__main__':
     args = parse_args()
+    t0 = time.time()
     upload_data_and_update_db(args)
+    print("Upload time: {:.2f}".format(time.time() - t0))
