@@ -25,7 +25,8 @@ RUN apt-get update && \
         libpng-dev \
         libtiff-dev \
         libavformat-dev \
-        libpq-dev
+        libpq-dev \
+        tmux
 
 # Install OpenCV
 RUN pip install --no-cache-dir opencv-python
