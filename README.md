@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/czbiohub/imagingDB.svg?branch=master)](https://travis-ci.com/czbiohub/imagingDB)
+Travis CI Build Status:    [![Build Status](https://travis-ci.com/czbiohub/imagingDB.svg?branch=master)](https://travis-ci.com/czbiohub/imagingDB)
 
 # Imaging Database
 
