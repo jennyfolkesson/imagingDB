@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/czbiohub/imagingDB.svg?branch=master)](https://travis-ci.com/czbiohub/imagingDB)
+
 # Imaging Database
 
 This is a data management system intended for microscopy images. It consists of two components:
