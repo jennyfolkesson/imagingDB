@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 import imaging_db.images.tiffolder_splitter as tif_splitter
-import imaging_db.metadata.json_validator as json_ops
+import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils

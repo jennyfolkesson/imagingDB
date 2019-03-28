@@ -6,8 +6,8 @@ import os
 import tifffile
 
 import imaging_db.images.file_splitter as file_splitter
-import imaging_db.metadata.json_validator as json_validator
 import imaging_db.filestorage.s3_storage as s3_storage
+import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
 
@@ -135,7 +135,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         nbr_frames = len(frame_paths)
 
         try:
-            self.global_json = json_validator.read_json_file(
+            self.global_json = json_ops.read_json_file(
                 os.path.join(self.data_path, "metadata.txt"),
             )
         except FileNotFoundError as e:
