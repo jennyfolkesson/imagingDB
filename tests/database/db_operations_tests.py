@@ -1,12 +1,9 @@
-import nose.tools
-import os
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import imaging_db.database.db_operations as db_ops
-import imaging_db.metadata.json_operations as json_ops
-import imaging_db.utils.db_utils as db_utils
+
 
 class TestDBTransactions(unittest.TestCase):
     """
@@ -21,7 +18,8 @@ class TestDBTransactions(unittest.TestCase):
     def setUp(self):
         # Credentials URI which can be used to connect
         # to postgres Docker container
-        self.credentials_str = 'postgres://username:password@localhost:5433/test'
+        self.credentials_str = \
+            'postgres://username:password@localhost:5433/imaging_test'
         # Create database connection
         self.Session = sessionmaker()
         self.engine = create_engine(self.credentials_str)

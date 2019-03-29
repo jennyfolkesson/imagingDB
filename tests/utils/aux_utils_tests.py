@@ -1,22 +1,23 @@
+import inspect
 import nose.tools
 
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
-def test_json_to_uri():
-    credentials_json = {
-        "drivername": "postgres",
-        "username": "user",
-        "password": "pwd",
-        "host": "db_host",
-        "port": 666,
-        "dbname": "db_name"
-    }
-    expected_str = "postgres://user:pwd@db_host:666/db_name"
+def test_import_class():
+    module_name = 'images.ometif_splitter'
+    class_name = 'OmeTiffSplitter'
+    class_inst = aux_utils.import_class(module_name, class_name)
+    nose.tools.assert_true(inspect.isclass(class_inst))
+    nose.tools.assert_equal(class_inst.__name__, 'OmeTiffSplitter')
 
-    credentials_str = aux_utils.json_to_uri(credentials_json)
-    nose.tools.assert_equal(credentials_str, expected_str)
+
+def test_get_splitter_class():
+    frames_format = 'tiff_folder'
+    class_inst = aux_utils.get_splitter_class(frames_format)
+    nose.tools.assert_true(inspect.isclass(class_inst))
+    nose.tools.assert_equal(class_inst.__name__, 'TifFolderSplitter')
 
 
 def test_parse_ml_name():
