@@ -123,9 +123,11 @@ class DatabaseOperations:
         :param str description: Short description of file
         :param dataframe frames_meta: Dataframe containing mandatory fields for
             each frame
-        :param json frames_json_meta: json object with arbitrary local metadata
+        :param list frames_json_meta: List of json objects with arbitrary
+            local metadata
         :param dict global_meta: Required global metadata fields
-        :param json global_json_meta: Arbitrary global metadata
+        :param dict global_json_meta: Arbitrary global metadata that can be
+            converted into JSONB format
         :param str microscope: microscope name
         :param str parent_dataset: Assign parent if not null
         """

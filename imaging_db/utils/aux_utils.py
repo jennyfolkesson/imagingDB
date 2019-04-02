@@ -140,7 +140,7 @@ def parse_idx_from_name(file_name, meta_row, channel_names, order="cztp"):
     """
     Assumes file name contains all 4 indices necessary for imagingDB:
      channel_idx (c), slice_idx (z), time_idx (t) and pos_idx (p)
-    E.g. im_c***_z***_p***_t***.png
+    E.g. im_c***_z***_t***_p***.png
     It doesn't care about the extension or the number of digits each index is
     represented by, it extracts all integers from the image file name and assigns
     them by order. By default it assumes that the order is c, z, t, p.
