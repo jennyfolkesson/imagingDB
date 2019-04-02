@@ -1,11 +1,10 @@
 import tests.database.db_basetest as db_basetest
 
 import imaging_db.database.dataset as dataset
-import imaging_db.database.frames as frames
 import imaging_db.database.frames_global as frames_global
 
 
-class TestFrames(db_basetest.DBBaseTest):
+class TestFramesGlobal(db_basetest.DBBaseTest):
     def setUp(self):
         super().setUp()
 
@@ -30,24 +29,13 @@ class TestFrames(db_basetest.DBBaseTest):
             metadata_json={"data_description": 'great'},
             data_set=self.dataset,
         )
-        self.frames = frames.Frames(
-            channel_idx=5,
-            slice_idx=6,
-            time_idx=7,
-            pos_idx=8,
-            channel_name='brightfield',
-            file_name='im_test.png',
-            sha256='AAAXXXXZZZZZ',
-            metadata_json={"foo": 'bar'},
-            frames_global=self.frames_global,
-        )
-        self.session.add(self.frames)
+        self.session.add(self.frames_global)
         self.session.commit()
 
     def tearDown(self):
         super().tearDown()
 
-    def test_frames(self):
-        expected = [self.frames]
-        result = self.session.query(frames.Frames).all()
+    def test_frames_global(self):
+        expected = [self.frames_global]
+        result = self.session.query(frames_global.FramesGlobal).all()
         self.assertEqual(result, expected)
