@@ -1,4 +1,5 @@
 import itertools
+import nose.tools
 
 import tests.database.db_basetest as db_basetest
 import imaging_db.database.db_operations as db_ops
@@ -35,33 +36,22 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.frames_meta = meta_utils.make_dataframe(6)
         self.frames_json_meta = []
         self.meta_dict = {'local_key': 'local_value'}
+        self.channel_names = ['brightfield', 'phase', '405']
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
             self.frames_meta.loc[i, 'file_name'] = im_name
             self.frames_meta.loc[i, 'channel_idx'] = c
+            self.frames_meta.loc[i, 'channel_name'] = self.channel_names[c]
             self.frames_meta.loc[i, 'slice_idx'] = z
             self.frames_meta.loc[i, 'pos_idx'] = 50
             self.frames_meta.loc[i, 'time_idx'] = 5
             self.frames_meta.loc[i, 'sha256'] = self.sha256
             self.frames_json_meta.append(self.meta_dict)
-
-    def tearDown(self):
-        super().tearDown()
-
-    def test_connection(self):
-        db_ops.test_connection(self.session)
-
-    def test_assert_unique_id(self):
-        db_inst = db_ops.DatabaseOperations(
+        # Insert frames
+        self.db_inst = db_ops.DatabaseOperations(
             dataset_serial=self.dataset_serial,
         )
-        db_inst.assert_unique_id(self.session)
-
-    def test_insert_frames(self):
-        db_inst = db_ops.DatabaseOperations(
-            dataset_serial=self.dataset_serial,
-        )
-        db_inst.insert_frames(
+        self.db_inst.insert_frames(
             session=self.session,
             description='test frames',
             frames_meta=self.frames_meta,
@@ -72,20 +62,63 @@ class TestDBOperations(db_basetest.DBBaseTest):
             parent_dataset=None,
         )
         # query frames
-        all_frames = self.session.query(db_ops.Frames) \
+        self.frames = self.session.query(db_ops.Frames) \
             .join(db_ops.FramesGlobal) \
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
             .order_by(db_ops.Frames.file_name)
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_connection(self):
+        db_ops.test_connection(self.session)
+
+    @nose.tools.raises(AssertionError)
+    def test_assert_unique_id(self):
+        self.db_inst.assert_unique_id(self.session)
+
+    def test_get_parent(self):
+        dataset_serial = 'TEST-2005-10-09-20-00-00-0002'
+        db_inst = db_ops.DatabaseOperations(
+            dataset_serial=dataset_serial,
+        )
+        # This is the first dataset inserted in setUp
+        parent_key = db_inst._get_parent(self.session, self.dataset_serial)
+        self.assertEqual(parent_key, 1)
+
+    @nose.tools.raises(ValueError)
+    def test_get_nonexisting_parent(self):
+        dataset_serial = 'TEST-2005-10-09-20-00-00-0002'
+        db_inst = db_ops.DatabaseOperations(
+            dataset_serial=dataset_serial,
+        )
+        # This is the first dataset inserted in setUp
+        db_inst._get_parent(
+            self.session,
+            'TEST-2005-01-01-01-00-00-0002',
+        )
+
+    def test_get_non_parent(self):
+        dataset_serial = 'TEST-2005-10-09-20-00-00-0002'
+        db_inst = db_ops.DatabaseOperations(
+            dataset_serial=dataset_serial,
+        )
+        # This is the first dataset inserted in setUp
+        parent_key = db_inst._get_parent(self.session, None)
+        self.assertIsNone(parent_key)
+
+    def test_insert_frames(self):
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
-            self.assertEqual(all_frames[i].file_name, im_name)
-            self.assertEqual(all_frames[i].channel_idx, c)
-            self.assertEqual(all_frames[i].slice_idx, z)
-            self.assertEqual(all_frames[i].time_idx, 5)
-            self.assertEqual(all_frames[i].pos_idx, 50)
-            self.assertEqual(all_frames[i].sha256, self.sha256)
-            self.assertDictEqual(all_frames[i].metadata_json, self.meta_dict)
+            self.assertEqual(self.frames[i].file_name, im_name)
+            self.assertEqual(self.frames[i].channel_idx, c)
+            self.assertEqual(self.frames[i].channel_name, self.channel_names[c])
+            self.assertEqual(self.frames[i].slice_idx, z)
+            self.assertEqual(self.frames[i].time_idx, 5)
+            self.assertEqual(self.frames[i].pos_idx, 50)
+            self.assertEqual(self.frames[i].sha256, self.sha256)
+            self.assertDictEqual(self.frames[i].metadata_json, self.meta_dict)
         # query frames_global
         global_query = self.session.query(db_ops.FramesGlobal) \
             .join(db_ops.DataSet) \
@@ -115,10 +148,12 @@ class TestDBOperations(db_basetest.DBBaseTest):
             sha256=self.sha256,
         )
         # Assert insert by query
-        datasets = self.session.query(db_ops.DataSet)
+        datasets = self.session.query(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == dataset_serial)
         self.assertEqual(datasets.count(), 1)
         dataset = datasets[0]
-        self.assertEqual(dataset.id, 1)
+        # This is the second dataset inserted
+        self.assertEqual(dataset.id, 2)
         self.assertEqual(dataset.dataset_serial, dataset_serial)
         self.assertEqual(dataset.description, self.description)
         date_time = dataset.date_time
@@ -129,23 +164,48 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.assertEqual(dataset.description, self.description)
 
     def test_get_filenames(self):
-        db_inst = db_ops.DatabaseOperations(
-            dataset_serial=self.dataset_serial,
-        )
-        db_inst.insert_frames(
-            session=self.session,
-            description='test frames',
-            frames_meta=self.frames_meta,
-            frames_json_meta=self.frames_json_meta,
-            global_meta=self.global_meta,
-            global_json_meta=self.global_json_meta,
-            microscope=self.microscope,
-            parent_dataset=None,
-        )
-        s3_dir, file_names = db_inst.get_filenames(
+        s3_dir, file_names = self.db_inst.get_filenames(
             session=self.session,
         )
         self.assertEqual(s3_dir, self.global_meta['s3_dir'])
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
             self.assertEqual(file_names[i], im_name)
+
+    def test_slice_frames(self):
+        sliced_frames = self.db_inst._slice_frames(
+            frames=self.frames,
+        )
+        for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
+            im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
+            self.assertEqual(sliced_frames[i].file_name, im_name)
+
+    def test_slice_frames_select(self):
+        sliced_frames = self.db_inst._slice_frames(
+            frames=self.frames,
+            pos=(50,),
+            times=(5,),
+            channels=(1, 2),
+            slices=(1,),
+        )
+        for i, c in enumerate(range(1, 3)):
+            im_name = 'im_c00{}_z001_t005_p050.png'.format(c)
+            self.assertEqual(sliced_frames[i].file_name, im_name)
+
+    def test_get_meta_from_frames(self):
+        global_meta, frames_meta = self.db_inst._get_meta_from_frames(
+            self.frames,
+        )
+        expected_meta = self.global_meta
+        expected_meta['metadata_json'] = self.global_json_meta
+        self.assertDictEqual(global_meta, self.global_meta)
+        self.assertTrue(frames_meta.equals(self.frames_meta))
+
+    def test_get_frames_meta(self):
+        global_meta, frames_meta = self.db_inst.get_frames_meta(
+            session=self.session,
+        )
+        expected_meta = self.global_meta
+        expected_meta['metadata_json'] = self.global_json_meta
+        self.assertDictEqual(global_meta, self.global_meta)
+        self.assertTrue(frames_meta.equals(self.frames_meta))
