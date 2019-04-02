@@ -48,6 +48,5 @@ class TestFrames(db_basetest.DBBaseTest):
         super().tearDown()
 
     def test_frames(self):
-        expected = [self.frames]
         result = self.session.query(frames.Frames).all()
-        self.assertEqual(result, expected)
+        self.assertEqual(result[0], self.frames)

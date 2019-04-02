@@ -28,6 +28,9 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.description = 'This is a test'
         self.s3_dir = 'testing/TEST-2005-10-09-20-00-00-0001'
         self.sha256 = 'aaabbbccc'
+        self.db_inst = db_ops.DatabaseOperations(
+            dataset_serial=self.dataset_serial,
+        )
 
     def tearDown(self):
         super().tearDown()
@@ -41,11 +44,15 @@ class TestDBOperations(db_basetest.DBBaseTest):
         )
         db_inst.assert_unique_id(self.session)
 
-    def test_insert(self):
-        db_inst = db_ops.DatabaseOperations(
-            dataset_serial=self.dataset_serial,
-        )
-        db_inst.insert_file(
+    # def test_insert_frames(self):
+    #     self.db_inst.insert_frames(
+    #         session=self.session,
+    #         description='test frames',
+    #         frames_meta=
+    #     )
+
+    def test_insert_file(self):
+        self.db_inst.insert_file(
             session=self.session,
             description=self.description,
             s3_dir=self.s3_dir,

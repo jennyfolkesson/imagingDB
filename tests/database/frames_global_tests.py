@@ -36,6 +36,5 @@ class TestFramesGlobal(db_basetest.DBBaseTest):
         super().tearDown()
 
     def test_frames_global(self):
-        expected = [self.frames_global]
         result = self.session.query(frames_global.FramesGlobal).all()
-        self.assertEqual(result, expected)
+        self.assertEqual(result[0], self.frames_global)
