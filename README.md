@@ -140,13 +140,20 @@ You will need to copy/paste the token generated in your Docker container.
 
 ## Running the tests
 
-There's currently some patchy unit test coverage which I intend to expand as
-the repository opens up to more users. Tests live in the same directory as
-the files they're testing with an appended '_tests' at the end of the file name.
-An example test run:
-
+Unittests are located in the tests/ directory. To be able to run the database tests, you first need to start the test and dev postgres Docker containers,
+which you can do with the command:
 ```buildoutcfg
-nosetests imaging_db/filestorage/s3_storage_tests.py
+make start-local-db
+``` 
+Then you can run all tests:
+```buildoutcfg
+nosetests tests/
+```
+The test and dev databases are mapped to ports 5433 and 5432 respectively, with host localhost and username
+'username' and password 'password'.
+To stop the Docker containers, just run
+```buildoutcfg
+make stop-local-db
 ```
 
 ## Built With
