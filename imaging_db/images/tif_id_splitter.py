@@ -5,7 +5,7 @@ import tifffile
 
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
-import imaging_db.utils.aux_utils as aux_utils
+import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -131,7 +131,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
         )
         # Get global json metadata
         if filename_parser is not None:
-            parse_func = getattr(aux_utils, filename_parser)
+            parse_func = getattr(file_parsers, filename_parser)
             self.global_json = parse_func(self.data_path)
         else:
             self.global_json = {}

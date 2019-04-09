@@ -13,8 +13,8 @@ import unittest
 from unittest.mock import patch
 
 import imaging_db.images.tiffolder_splitter as tif_splitter
+import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.metadata.json_operations as json_ops
-import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
@@ -169,7 +169,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.frames_inst.set_frame_info(meta_dict)
 
     def test_set_frame_meta(self):
-        parse_func = getattr(aux_utils, 'parse_sms_name')
+        parse_func = getattr(file_parsers, 'parse_sms_name')
         file_name = 'im_weird_channel_with_underscores_t020_z030_p040.tif'
         meta_row = self.frames_inst._set_frame_meta(parse_func, file_name)
         self.assertEqual(

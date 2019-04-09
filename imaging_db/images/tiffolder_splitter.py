@@ -6,6 +6,7 @@ import os
 import tifffile
 
 import imaging_db.images.file_splitter as file_splitter
+import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
@@ -64,11 +65,11 @@ class TifFolderSplitter(file_splitter.FileSplitter):
     def _set_frame_meta(self, parse_func, file_name):
         """
         Since information is assumed to be contained in the file name,
-        dedicated functions to parse file names are in aux_utils.
+        dedicated functions to parse file names are in filename_parsers.
         This function uses this parse_func to find important information like
         channel name and indices from the file name.
 
-        :param function parse_func: Function in aux_utils
+        :param function parse_func: Function in filename_parsers
         :param str file_name: File name or path
         :return dict meta_row: Structured metadata for frame
         """
@@ -114,7 +115,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         required indices channel_idx, slice_idx, time and pos_idx. By default,
         it will assume that the file name contains 4 integers corresponding to
         these 4 indices. If that's not the case, you can specify a custom parser
-        in aux_utils.
+        in filename_parsers.
         Global metadata dict is assumed to be in the same folder in a file
         named metadata.txt (optional).
 
@@ -124,10 +125,10 @@ class TifFolderSplitter(file_splitter.FileSplitter):
             "Directory doesn't exist: {}".format(self.data_path)
 
         try:
-            parse_func = getattr(aux_utils, filename_parser)
+            parse_func = getattr(file_parsers, filename_parser)
         except AttributeError as e:
             raise AttributeError(
-                "Must use aux_utils function for file name. {}".format(e))
+                "Must use filename_parsers function for file name. {}".format(e))
 
         frame_paths = natsort.natsorted(
             glob.glob(os.path.join(self.data_path, "*.tif")),
