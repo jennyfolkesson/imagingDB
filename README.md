@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.com/czbiohub/imagingDB.svg?branch=master)](https://travis-ci.com/czbiohub/imagingDB)
-[![Code Coverage](https://codecov.io/gh/czbiohub/imagingDB/branch/master/graphs/badge.svg](https://codecov.io/gh/czbiohub/imagingDB)
+[![Code Coverage](https://codecov.io/gh/czbiohub/imagingDB/branch/master/graphs/badge.svg)](https://codecov.io/gh/czbiohub/imagingDB)
 
 # Imaging Database
 
