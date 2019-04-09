@@ -24,12 +24,15 @@ before_install:
   - export AWS_ACCESS_KEY_ID=foobar_key
 install:
   - pip install coverage
+  - pip install codecov
   - pip install -r requirements.txt
 before_script:
   - psql -c 'create database imaging_test;' -U postgres
   - psql -c "create user imaging_user with password 'imaging_passwd';" -U postgres
 script:
   - nosetests -v --with-coverage --cover-package=imaging_db/
+after_success:
+  - codecov
 notifications:
   email:
     recipients:
