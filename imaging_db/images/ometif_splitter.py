@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
-import imaging_db.metadata.json_validator as json_validator
+import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -80,7 +80,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                             dtype=self.bit_depth)
 
         # Get metadata schema
-        meta_schema = json_validator.read_json_file(schema_filename)
+        meta_schema = json_ops.read_json_file(schema_filename)
         # Convert frames to numpy stack and collect metadata
         # Separate structured metadata (with known fields)
         # from unstructured, the latter goes into frames_json
@@ -91,7 +91,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
             page = frames.pages[i]
             im_stack[..., i] = np.atleast_3d(page.asarray())
             # Get dict with metadata from json schema
-            json_i, meta_i = json_validator.get_metadata_from_tags(
+            json_i, meta_i = json_ops.get_metadata_from_tags(
                 page=page,
                 meta_schema=meta_schema,
                 validate=True,
@@ -157,7 +157,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                 "Can't find ome.tifs in {}".format(self.data_path)
             # Parse positions
             if isinstance(positions, str):
-                positions = json_validator.str2json(positions)
+                positions = json_ops.str2json(positions)
 
         # Read first file to find available positions
         frames = tifffile.TiffFile(file_paths[0])
@@ -166,7 +166,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         # Set frame info. This should not vary between positions
         self.set_frame_info(page)
         # IJMetadata only exists in first frame, so that goes into global json
-        self.global_json = json_validator.get_global_json(
+        self.global_json = json_ops.get_global_json(
             page=page,
             file_name=self.data_path,
         )
