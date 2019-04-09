@@ -27,7 +27,7 @@ install:
   - pip install -r requirements.txt
 before_script:
   - psql -c 'create database imaging_test;' -U postgres
-  - psql -c "create user username with password 'password';" -U postgres
+  - psql -c "create user imaging_user with password 'imaging_passwd';" -U postgres
 script:
   - nosetests -v --with-coverage --cover-package=imaging_db/
 notifications:

@@ -6,8 +6,8 @@ services:
     container_name: imaging_dev_db
     environment:
       POSTGRES_DB: imaging_dev
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: imaging_user
+      POSTGRES_PASSWORD: imaging_passwd
     ports:
       - "5432:5432"
 
@@ -16,7 +16,7 @@ services:
     container_name: imaging_test_db
     environment:
       POSTGRES_DB: imaging_test
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: imaging_user
+      POSTGRES_PASSWORD: imaging_passwd
     ports:
       - "5433:5432"
