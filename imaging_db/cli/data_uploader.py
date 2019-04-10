@@ -85,13 +85,13 @@ def upload_data_and_update_db(args):
     assert os.path.isfile(args.csv), \
         "File doesn't exist: {}".format(args.csv)
     files_data = pd.read_csv(args.csv)
+
     # Get database connection URI
     db_connection = db_utils.get_connection_str(args.login)
-
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
+        print(session)
         db_ops.test_connection(session)
-
     # Read and validate config json
     config_json = json_ops.read_json_file(
         json_filename=args.config,
