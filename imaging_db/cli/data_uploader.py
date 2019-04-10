@@ -4,6 +4,8 @@ import argparse
 import os
 import pandas as pd
 import time
+import sys
+
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
 import imaging_db.filestorage.s3_storage as s3_storage
@@ -53,7 +55,6 @@ def parse_args():
         default=None,
         help="Number of treads to increase download speed"
     )
-
     return parser.parse_args()
 
 
@@ -81,23 +82,25 @@ def upload_data_and_update_db(args):
                 Valid options: 'ome_tiff', 'tiffolder', 'tifvideo'
             str json_meta: If slice, give full path to json metadata schema
     """
+    print('in uploader')
     # Assert that csv file exists and load it
     assert os.path.isfile(args.csv), \
         "File doesn't exist: {}".format(args.csv)
     files_data = pd.read_csv(args.csv)
-
+    print(files_data)
     # Get database connection URI
     db_connection = db_utils.get_connection_str(args.login)
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
+        print(session)
         db_ops.test_connection(session)
-
+    # assert 0 == 1
     # Read and validate config json
     config_json = json_ops.read_json_file(
         json_filename=args.config,
         schema_name="CONFIG_SCHEMA",
     )
-
+    print(config_json)
     # Assert that upload type is valid
     upload_type = config_json['upload_type'].lower()
     assert upload_type in {"file", "frames"}, \
@@ -120,10 +123,11 @@ def upload_data_and_update_db(args):
         splitter_class = aux_utils.get_splitter_class(
             config_json['frames_format'],
         )
-
+    # assert 0 == 1
     # Upload all files
     for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
+        print(row)
         dataset_serial = row.dataset_id
         try:
             cli_utils.validate_id(dataset_serial)
