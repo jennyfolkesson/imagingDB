@@ -7,7 +7,7 @@ import time
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
 import imaging_db.filestorage.s3_storage as s3_storage
-import imaging_db.metadata.json_ops as json_ops
+import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.db_utils as db_utils
 import imaging_db.utils.meta_utils as meta_utils
@@ -87,7 +87,7 @@ def upload_data_and_update_db(args):
     files_data = pd.read_csv(args.csv)
 
     # Get database connection URI
-    db_connection = db_utils.get_connection_str()
+    db_connection = db_utils.get_connection_str(args.login)
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
         db_ops.test_connection(session)

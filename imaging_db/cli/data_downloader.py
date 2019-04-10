@@ -125,7 +125,7 @@ def download_data(args):
             "Folder {} already exists, {}".format(dest_dir, e))
 
     # Get database connection URI
-    db_connection = db_utils.get_connection_str()
+    db_connection = db_utils.get_connection_str(args.login)
     # Instantiate database class
     try:
         db_inst = db_ops.DatabaseOperations(
