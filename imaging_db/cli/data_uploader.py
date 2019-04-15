@@ -4,7 +4,6 @@ import argparse
 import os
 import pandas as pd
 import time
-import sys
 
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
@@ -94,19 +93,17 @@ def upload_data_and_update_db(args):
     with db_ops.session_scope(db_connection) as session:
         print(session)
         db_ops.test_connection(session)
-    # assert 0 == 1
     # Read and validate config json
     config_json = json_ops.read_json_file(
         json_filename=args.config,
         schema_name="CONFIG_SCHEMA",
     )
-    print(config_json)
     # Assert that upload type is valid
     upload_type = config_json['upload_type'].lower()
     assert upload_type in {"file", "frames"}, \
         "upload_type should be 'file' or 'frames', not {}".format(
-            upload_type)
-
+            upload_type,
+        )
     if args.nbr_workers is not None:
         assert args.nbr_workers > 0, \
             "Nbr of worker must be >0, not {}".format(args.nbr_workers)
@@ -123,7 +120,6 @@ def upload_data_and_update_db(args):
         splitter_class = aux_utils.get_splitter_class(
             config_json['frames_format'],
         )
-    # assert 0 == 1
     # Upload all files
     for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
@@ -144,8 +140,9 @@ def upload_data_and_update_db(args):
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        with db_ops.session_scope(db_connection) as session:
-            db_inst.assert_unique_id(session)
+        if not args.override:
+            with db_ops.session_scope(db_connection) as session:
+                db_inst.assert_unique_id(session)
         # Check for parent dataset
         parent_dataset_id = 'None'
         if 'parent_dataset_id' in row:

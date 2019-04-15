@@ -98,14 +98,15 @@ class TestDataUploader(db_basetest.DBBaseTest):
             self.assertFalse(parsed_args.override)
             self.assertEqual(parsed_args.nbr_workers, 5)
 
-    # # @patch('imaging_db.database.db_operations.session_scope')
-    # def test_upload_data(self):
-    #     # mock_session().return_value = self.session
-    #     # print(self.session)
-    #     # print(mock_session)
-    #     args = argparse.Namespace(
-    #         csv=self.csv_path,
-    #         login=self.credentials_path,
-    #         config=self.config_path,
-    #     )
-    #     data_uploader.upload_data_and_update_db(args)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_data(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        print(self.session)
+        args = argparse.Namespace(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=self.config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
