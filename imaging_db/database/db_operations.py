@@ -186,6 +186,7 @@ class DatabaseOperations:
                     session,
                     description,
                     s3_dir,
+                    file_name,
                     global_json_meta,
                     microscope,
                     sha256,
@@ -196,6 +197,7 @@ class DatabaseOperations:
         :param session: SQLAlchemy session
         :param str description: Short description of file
         :param str s3_dir: Folder in S3 bucket where data is stored
+        :param str file_name: Name of file
         :param global_json_meta: Arbitrary metadata fields for file
         :param str microscope: microscope name
         :param str sha256: sha256 checksum for file
@@ -223,6 +225,7 @@ class DatabaseOperations:
         # Add s3 location
         new_file_global = FileGlobal(
             s3_dir=s3_dir,
+            file_name=file_name,
             metadata_json=global_json_meta,
             data_set=new_dataset,
             sha256=sha256,
@@ -254,10 +257,8 @@ class DatabaseOperations:
                 .join(DataSet) \
                 .filter(DataSet.dataset_serial == dataset.dataset_serial) \
                 .one()
-            file_name = file_global.metadata_json["file_origin"]
-            file_name = file_name.split("/")[-1]
 
-            return file_global.s3_dir, [file_name]
+            return file_global.s3_dir, [file_global.file_name]
         else:
             # Get frames
             all_frames = session.query(Frames) \

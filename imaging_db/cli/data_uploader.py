@@ -214,12 +214,14 @@ def upload_data_and_update_db(args):
             sha = meta_utils.gen_sha256(row.file_name)
             # Add file entry to DB once I can get it tested
             global_json = {"file_origin": row.file_name}
+            file_name = row.file_name.split("/")[-1]
             try:
                 with db_ops.session_scope(db_connection) as session:
                     db_inst.insert_file(
                         session=session,
                         description=description,
                         s3_dir=s3_dir,
+                        file_name=file_name,
                         global_json_meta=global_json,
                         microscope=microscope,
                         parent_dataset=row.parent_dataset_id,

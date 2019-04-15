@@ -139,10 +139,12 @@ class TestDBOperations(db_basetest.DBBaseTest):
         db_inst = db_ops.DatabaseOperations(
             dataset_serial=dataset_serial,
         )
+        file_name = 'test_file.lif'
         db_inst.insert_file(
             session=self.session,
             description=self.description,
             s3_dir=self.s3_dir,
+            file_name=file_name,
             global_json_meta=self.global_json_meta,
             microscope=self.microscope,
             sha256=self.sha256,
@@ -162,6 +164,15 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.assertEqual(date_time.day, 12)
         self.assertEqual(dataset.microscope, self.microscope)
         self.assertEqual(dataset.description, self.description)
+        # Get file_global and validate
+        file_global = self.session.query(db_ops.FileGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == dataset_serial) \
+            .one()
+        self.assertEqual(file_global.s3_dir, self.s3_dir)
+        self.assertEqual(file_global.file_name, file_name)
+        self.assertDictEqual(file_global.metadata_json, self.global_json_meta)
+        self.assertEqual(file_global.sha256, self.sha256)
 
     def test_get_filenames(self):
         s3_dir, file_names = self.db_inst.get_filenames(
