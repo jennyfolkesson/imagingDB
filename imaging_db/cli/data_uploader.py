@@ -140,8 +140,8 @@ def upload_data_and_update_db(args):
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        if not args.override:
-            db_inst.assert_unique_id()
+        with db_ops.session_scope(db_connection) as session:
+            db_inst.assert_unique_id(session)
         # Check for parent dataset
         parent_dataset_id = 'None'
         if 'parent_dataset_id' in row:
@@ -153,9 +153,6 @@ def upload_data_and_update_db(args):
                 description = row.description
 
         if upload_type == "frames":
-            if not args.override:
-                with db_ops.session_scope(db_connection) as session:
-                    db_inst.assert_unique_id(session)
             # Instantiate splitter class
             frames_inst = splitter_class(
                 data_path=row.file_name,
@@ -203,8 +200,6 @@ def upload_data_and_update_db(args):
             )
             if not args.override:
                 data_uploader.assert_unique_id()
-                with db_ops.session_scope(db_connection) as session:
-                    db_inst.assert_unique_id(session)
             try:
                 data_uploader.upload_file(file_name=row.file_name)
                 print("File {} uploaded to S3".format(row.file_name))
