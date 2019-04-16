@@ -103,7 +103,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             self.assertEqual(parsed_args.nbr_workers, 5)
 
     @patch('imaging_db.database.db_operations.session_scope')
-    def test_upload_data(self, mock_session):
+    def test_upload_frames(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         args = argparse.Namespace(
             csv=self.csv_path,

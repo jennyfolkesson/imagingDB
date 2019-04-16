@@ -425,7 +425,8 @@ class DatabaseOperations:
             .filter(DataSet.dataset_serial == self.dataset_serial).one()
 
         assert dataset.frames is True,\
-            "This dataset has not been split into frames"
+            "This dataset has not been split into frames." \
+            "Set metadata to False if downloading file"
 
         # Get frames in datset
         all_frames = session.query(Frames) \
