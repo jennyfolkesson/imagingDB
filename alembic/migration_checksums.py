@@ -5,6 +5,7 @@ import os
 
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.database.db_operations as db_ops
+import imaging_db.utils.db_utils as db_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -34,7 +35,9 @@ def migrate_db(credentials_filename):
     dir_name = os.path.abspath(os.path.join('..'))
     dest_dir = os.path.join(dir_name, 'temp_downloads')
     os.makedirs(dest_dir, exist_ok=True)
-
+    credentials_str = db_utils.get_connection_str(
+        credentials_filename=credentials_filename,
+    )
     # Get files and compute checksums
     with db_ops.session_scope(credentials_str) as session:
         files = session.query(db_ops.FileGlobal)

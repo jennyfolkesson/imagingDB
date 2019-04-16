@@ -2,11 +2,15 @@ from __future__ import with_statement
 from alembic import context
 import os
 from sqlalchemy import engine_from_config, pool
+import sys
 from logging.config import fileConfig
+
+# Add path to imaging_db
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
 import imaging_db.database.db_operations as db_ops
 import imaging_db.metadata.json_operations as json_ops
-
+import imaging_db.utils.db_utils as db_utils
 
 # Edit this depending on where your database credential file is stored
 # This assumes it's stored in dir above imagingDB
@@ -25,7 +29,7 @@ credentials_json = json_ops.read_json_file(
 
 config.set_main_option(
     'sqlalchemy.url',
-    db_ops.json_to_uri(credentials_json=credentials_json))
+    db_utils.json_to_uri(credentials_json=credentials_json))
 
 print("Using url:", config.get_main_option('sqlalchemy.url'))
 

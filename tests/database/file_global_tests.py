@@ -17,6 +17,7 @@ class TestFileGlobal(db_basetest.DBBaseTest):
         )
         self.file_global = file_global.FileGlobal(
             s3_dir='test_bucket/testdir',
+            file_name='test_file.lif',
             metadata_json={"data_description": 'great'},
             data_set=self.dataset,
             sha256='aaabbbccc'
