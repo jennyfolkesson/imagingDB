@@ -1,8 +1,10 @@
 import argparse
 import boto3
+import itertools
 from moto import mock_s3
 import nose.tools
 import numpy as np
+import numpy.testing
 import os
 import pandas as pd
 from testfixtures import TempDirectory
@@ -12,6 +14,8 @@ from unittest.mock import patch
 import imaging_db.database.db_operations as db_ops
 import imaging_db.cli.data_uploader as data_uploader
 import tests.database.db_basetest as db_basetest
+import imaging_db.utils.image_utils as im_utils
+import imaging_db.utils.meta_utils as meta_utils
 
 
 class TestDataUploader(db_basetest.DBBaseTest):
@@ -101,7 +105,6 @@ class TestDataUploader(db_basetest.DBBaseTest):
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_data(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
-        print(self.session)
         args = argparse.Namespace(
             csv=self.csv_path,
             login=self.credentials_path,
@@ -115,15 +118,143 @@ class TestDataUploader(db_basetest.DBBaseTest):
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
         self.assertEqual(datasets.count(), 1)
         dataset = datasets[0]
-        # This is the second dataset inserted
-        self.assertEqual(dataset.id, 2)
+        self.assertEqual(dataset.id, 1)
+        self.assertTrue(dataset.frames)
         self.assertEqual(dataset.dataset_serial, self.dataset_serial)
-        self.assertEqual(dataset.description, self.description)
         date_time = dataset.date_time
         self.assertEqual(date_time.year, 2005)
-        self.assertEqual(date_time.month, 10)
-        self.assertEqual(date_time.day, 12)
+        self.assertEqual(date_time.month, 6)
+        self.assertEqual(date_time.day, 9)
         self.assertEqual(dataset.microscope,
                          "Leica microscope CAN bus adapter")
         self.assertEqual(dataset.description, 'Testing')
+        # query frames_global
+        global_query = self.session.query(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
+        self.assertEqual(
+            global_query[0].s3_dir,
+            self.s3_dir,
+        )
+        self.assertEqual(
+            global_query[0].nbr_frames,
+            self.nbr_channels * self.nbr_slices,
+        )
+        im_shape = self.im.shape
+        self.assertEqual(
+            global_query[0].im_width,
+            im_shape[2],
+        )
+        self.assertEqual(
+            global_query[0].im_height,
+            im_shape[1],
+        )
+        self.assertEqual(
+            global_query[0].nbr_slices,
+            self.nbr_slices)
+        self.assertEqual(
+            global_query[0].nbr_channels,
+            self.nbr_channels,
+        )
+        self.assertEqual(
+            global_query[0].nbr_positions,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].nbr_timepoints,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].im_colors,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].bit_depth,
+            'uint16',
+        )
+        # query frames
+        frames = self.session.query(db_ops.Frames) \
+            .join(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
+            .order_by(db_ops.Frames.file_name)
+        # Images are separated by slice first then channel
+        im_order = [0, 2, 4, 1, 3, 5]
+        it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
+        for i, (c, z) in enumerate(it):
+            im_name = 'im_c00{}_z00{}_t000_p000.png'.format(c, z)
+            self.assertEqual(frames[i].file_name, im_name)
+            self.assertEqual(frames[i].channel_idx, c)
+            self.assertEqual(frames[i].slice_idx, z)
+            self.assertEqual(frames[i].time_idx, 0)
+            self.assertEqual(frames[i].pos_idx, 0)
+            sha256 = meta_utils.gen_sha256(self.im[im_order[i], ...])
+            self.assertEqual(frames[i].sha256, sha256)
         # Download frames from storage and compare to originals
+        it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
+        for i, (c, z) in enumerate(it):
+            im_name = 'im_c00{}_z00{}_t000_p000.png'.format(c, z)
+            key = "/".join([self.s3_dir, im_name])
+            byte_string = self.conn.Object(
+                self.bucket_name, key).get()['Body'].read()
+            # Construct an array from the bytes and decode image
+            im = im_utils.deserialize_im(byte_string)
+            # Assert that contents are the same
+            nose.tools.assert_equal(im.dtype, np.uint16)
+            numpy.testing.assert_array_equal(im, self.im[im_order[i], ...])
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_file(self, mock_session):
+        # Upload the same file but as file instead of frames
+        mock_session.return_value.__enter__.return_value = self.session
+
+        config_path = os.path.join(
+            os.path.dirname(__file__),
+            '..',
+            '..',
+            'config_file.json',
+        )
+        args = argparse.Namespace(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+        # Query database to find data_set and file_global
+        datasets = self.session.query(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
+        self.assertEqual(datasets.count(), 1)
+        dataset = datasets[0]
+        self.assertEqual(dataset.id, 1)
+        self.assertFalse(dataset.frames)
+        self.assertEqual(dataset.dataset_serial, self.dataset_serial)
+        date_time = dataset.date_time
+        self.assertEqual(date_time.year, 2005)
+        self.assertEqual(date_time.month, 6)
+        self.assertEqual(date_time.day, 9)
+        self.assertEqual(dataset.microscope, "Mass Spectrometry")
+        self.assertEqual(dataset.description, 'Testing')
+        # query file_global
+        file_global = self.session.query(db_ops.FileGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
+            .one()
+        expected_s3 = "raw_files/TEST-2005-06-09-20-00-00-1000"
+        self.assertEqual(
+            file_global.s3_dir,
+            expected_s3,
+        )
+        expected_meta = {'file_origin': self.file_path}
+        self.assertDictEqual(file_global.metadata_json, expected_meta)
+        self.assertEqual(file_global.data_set, dataset)
+        sha256 = meta_utils.gen_sha256(self.file_path)
+        self.assertEqual(file_global.sha256, sha256)
+        # Check that file has been uploaded
+        s3_client = boto3.client('s3')
+        key = "/".join([expected_s3, "A1_2_PROTEIN_test.tif"])
+        # Just check that the file is there, we've dissected it before
+        response = s3_client.list_objects_v2(Bucket=self.bucket_name,
+                                             Prefix=key)
+        self.assertEqual(response['KeyCount'], 1)

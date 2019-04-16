@@ -81,18 +81,15 @@ def upload_data_and_update_db(args):
                 Valid options: 'ome_tiff', 'tiffolder', 'tifvideo'
             str json_meta: If slice, give full path to json metadata schema
     """
-    print('in uploader')
     # Assert that csv file exists and load it
     assert os.path.isfile(args.csv), \
         "File doesn't exist: {}".format(args.csv)
     files_data = pd.read_csv(args.csv)
-    print(files_data)
     # Get database connection URI
     db_connection = db_utils.get_connection_str(args.login)
 
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
-        print(session)
         db_ops.test_connection(session)
 
     # Read and validate config json
@@ -125,12 +122,12 @@ def upload_data_and_update_db(args):
     # Upload all files
     for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
-        print(row)
         dataset_serial = row.dataset_id
         try:
             cli_utils.validate_id(dataset_serial)
         except AssertionError as e:
             print("Invalid ID:", e)
+            raise
 
         # Get S3 directory based on upload type
         if upload_type == "frames":
@@ -222,7 +219,7 @@ def upload_data_and_update_db(args):
                         file_name=file_name,
                         global_json_meta=global_json,
                         microscope=microscope,
-                        parent_dataset=row.parent_dataset_id,
+                        parent_dataset=parent_dataset_id,
                         sha256=sha,
                     )
                 print("File info for {} inserted in DB".format(dataset_serial))
