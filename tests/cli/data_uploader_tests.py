@@ -7,9 +7,9 @@ import os
 import pandas as pd
 from testfixtures import TempDirectory
 import tifffile
-import unittest
 from unittest.mock import patch
 
+import imaging_db.database.db_operations as db_ops
 import imaging_db.cli.data_uploader as data_uploader
 import tests.database.db_basetest as db_basetest
 
@@ -49,16 +49,16 @@ class TestDataUploader(db_basetest.DBBaseTest):
             self.im,
             description=self.description,
         )
+        self.dataset_serial = 'TEST-2005-06-09-20-00-00-1000'
         upload_csv = pd.DataFrame(
             columns=['dataset_id', 'file_name', 'description'],
         )
         upload_csv = upload_csv.append(
-            {'dataset_id': 'TEST-2005-06-09-20-00-00-1000',
+            {'dataset_id': self.dataset_serial,
              'file_name': self.file_path,
              'description': 'Testing'},
             ignore_index=True,
         )
-        print(upload_csv)
         self.csv_path = os.path.join(self.temp_path, "test_upload.csv")
         upload_csv.to_csv(self.csv_path)
         self.credentials_path = os.path.join(
@@ -110,3 +110,20 @@ class TestDataUploader(db_basetest.DBBaseTest):
             override=False,
         )
         data_uploader.upload_data_and_update_db(args)
+        # Query database to find data_set and frames
+        datasets = self.session.query(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
+        self.assertEqual(datasets.count(), 1)
+        dataset = datasets[0]
+        # This is the second dataset inserted
+        self.assertEqual(dataset.id, 2)
+        self.assertEqual(dataset.dataset_serial, self.dataset_serial)
+        self.assertEqual(dataset.description, self.description)
+        date_time = dataset.date_time
+        self.assertEqual(date_time.year, 2005)
+        self.assertEqual(date_time.month, 10)
+        self.assertEqual(date_time.day, 12)
+        self.assertEqual(dataset.microscope,
+                         "Leica microscope CAN bus adapter")
+        self.assertEqual(dataset.description, 'Testing')
+        # Download frames from storage and compare to originals
