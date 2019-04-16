@@ -258,3 +258,33 @@ class TestDataUploader(db_basetest.DBBaseTest):
         response = s3_client.list_objects_v2(Bucket=self.bucket_name,
                                              Prefix=key)
         self.assertEqual(response['KeyCount'], 1)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_no_csv(self, mock_session):
+        # Upload the same file but as file instead of frames
+        mock_session.return_value.__enter__.return_value = self.session
+
+        args = argparse.Namespace(
+            csv='no-csv-path',
+            login=self.credentials_path,
+            config=self.config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_negative_workers(self, mock_session):
+        # Upload the same file but as file instead of frames
+        mock_session.return_value.__enter__.return_value = self.session
+
+        args = argparse.Namespace(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=self.config_path,
+            nbr_workers=-1,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)

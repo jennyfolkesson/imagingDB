@@ -4,6 +4,7 @@ import cv2
 import glob
 import itertools
 from moto import mock_s3
+import nose.tools
 import numpy as np
 import numpy.testing
 import os
@@ -223,7 +224,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             id=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
+            nbr_workers=2,
             metadata=False,
             download=True,
             positions=None,
@@ -240,3 +241,93 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         )
         found_file = os.path.basename(glob.glob(file_path)[0])
         self.assertEqual("A1_2_PROTEIN_test.tif", found_file)
+
+    @nose.tools.raises(FileExistsError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_folder_exists(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        self.tempdir.makedir(
+            os.path.join('dest_dir', self.dataset_serial_file),
+        )
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        args = argparse.Namespace(
+            id=self.dataset_serial_file,
+            login=self.credentials_path,
+            dest=dest_dir,
+            nbr_workers=2,
+            metadata=False,
+            download=True,
+            positions=None,
+            channels=None,
+            times=None,
+            slices=None,
+        )
+        data_downloader.download_data(args)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_no_download_or_meta(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        args = argparse.Namespace(
+            id=self.dataset_serial_file,
+            login=self.credentials_path,
+            dest=dest_dir,
+            nbr_workers=2,
+            metadata=False,
+            download=False,
+            positions=None,
+            channels=None,
+            times=None,
+            slices=None,
+        )
+        data_downloader.download_data(args)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_invalid_dataset(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        self.tempdir.makedir(
+            os.path.join('dest_dir', self.dataset_serial_file),
+        )
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        args = argparse.Namespace(
+            id='Not-a-serial',
+            login=self.credentials_path,
+            dest=dest_dir,
+            nbr_workers=2,
+            metadata=False,
+            download=True,
+            positions=None,
+            channels=None,
+            times=None,
+            slices=None,
+        )
+        data_downloader.download_data(args)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_negative_workers(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        args = argparse.Namespace(
+            id=self.dataset_serial_file,
+            login=self.credentials_path,
+            dest=dest_dir,
+            nbr_workers=-2,
+            metadata=False,
+            download=False,
+            positions=None,
+            channels=None,
+            times=None,
+            slices=None,
+        )
+        data_downloader.download_data(args)
