@@ -140,8 +140,9 @@ def upload_data_and_update_db(args):
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        with db_ops.session_scope(db_connection) as session:
-            db_inst.assert_unique_id(session)
+        if not args.override:
+            with db_ops.session_scope(db_connection) as session:
+                db_inst.assert_unique_id(session)
         # Check for parent dataset
         parent_dataset_id = 'None'
         if 'parent_dataset_id' in row:
