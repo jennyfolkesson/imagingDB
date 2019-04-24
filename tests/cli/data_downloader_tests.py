@@ -135,6 +135,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
                     '-p', '5',
                     '-t', '0',
                     '-c', '1', '2', '3',
+                    '-z', '4', '5',
                     '--dest', 'dest_path',
                     '--login', 'test_login.json',
                     '--nbr_workers', '5']):
@@ -143,6 +144,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.assertListEqual(parsed_args.positions, [5])
             self.assertListEqual(parsed_args.times, [0])
             self.assertListEqual(parsed_args.channels, ['1', '2', '3'])
+            self.assertListEqual(parsed_args.slices, ['4', '5'])
             self.assertEqual(parsed_args.dest, 'dest_path')
             self.assertEqual(parsed_args.login, 'test_login.json')
             self.assertEqual(parsed_args.nbr_workers, 5)

@@ -90,7 +90,6 @@ def upload_data_and_update_db(args):
     db_connection = db_utils.get_connection_str(args.login)
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
-        print(session)
         db_ops.test_connection(session)
     # Read and validate config json
     config_json = json_ops.read_json_file(

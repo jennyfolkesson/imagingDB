@@ -203,6 +203,32 @@ class TestDataUploader(db_basetest.DBBaseTest):
             nose.tools.assert_equal(im.dtype, np.uint16)
             numpy.testing.assert_array_equal(im, self.im[im_order[i], ...])
 
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_invalid_id(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create csv with invalid ID
+        upload_csv = pd.DataFrame(
+            columns=['dataset_id', 'file_name', 'description'],
+        )
+        upload_csv = upload_csv.append(
+            {'dataset_id': 'BAD_ID',
+             'file_name': self.file_path,
+             'description': 'Testing'},
+            ignore_index=True,
+        )
+        invalid_csv_path = os.path.join(self.temp_path, "invalid_upload.csv")
+        upload_csv.to_csv(invalid_csv_path)
+
+        args = argparse.Namespace(
+            csv=invalid_csv_path,
+            login=self.credentials_path,
+            config=self.config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_file(self, mock_session):
         # Upload the same file but as file instead of frames
