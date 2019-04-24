@@ -132,7 +132,7 @@ def download_data(args):
             dataset_serial=dataset_serial,
         )
         with db_ops.session_scope(db_connection) as session:
-            db_inst.test_connection(session)
+            db_ops.test_connection(session)
     except Exception as e:
         raise IOError("Can't instantiate DB: {}".format(e))
 
@@ -140,7 +140,10 @@ def download_data(args):
         # Just download file(s)
         assert args.download,\
             "You set metadata *and* download to False. You get nothing."
-        s3_dir, file_names = db_inst.get_filenames()
+        with db_ops.session_scope(db_connection) as session:
+            s3_dir, file_names = db_inst.get_filenames(
+                session=session,
+            )
     else:
         # Get all the slicing args and recast as tuples
         if args.positions is None:

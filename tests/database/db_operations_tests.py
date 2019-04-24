@@ -123,16 +123,46 @@ class TestDBOperations(db_basetest.DBBaseTest):
         global_query = self.session.query(db_ops.FramesGlobal) \
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
-        self.assertEqual(global_query[0].s3_dir, self.global_meta['s3_dir'])
-        self.assertEqual(global_query[0].nbr_frames, self.global_meta['nbr_frames'])
-        self.assertEqual(global_query[0].im_width, self.global_meta['im_width'])
-        self.assertEqual(global_query[0].im_height, self.global_meta['im_height'])
-        self.assertEqual(global_query[0].nbr_slices, self.global_meta['nbr_slices'])
-        self.assertEqual(global_query[0].nbr_channels, self.global_meta['nbr_channels'])
-        self.assertEqual(global_query[0].nbr_positions, self.global_meta['nbr_positions'])
-        self.assertEqual(global_query[0].nbr_timepoints, self.global_meta['nbr_timepoints'])
-        self.assertEqual(global_query[0].im_colors, self.global_meta['im_colors'])
-        self.assertEqual(global_query[0].bit_depth, self.global_meta['bit_depth'])
+        self.assertEqual(
+            global_query[0].s3_dir,
+            self.global_meta['s3_dir'],
+        )
+        self.assertEqual(
+            global_query[0].nbr_frames,
+            self.global_meta['nbr_frames'],
+        )
+        self.assertEqual(
+            global_query[0].im_width,
+            self.global_meta['im_width'],
+        )
+        self.assertEqual(
+            global_query[0].im_height,
+            self.global_meta['im_height'],
+        )
+        self.assertEqual(
+            global_query[0].nbr_slices,
+            self.global_meta['nbr_slices'],
+        )
+        self.assertEqual(
+            global_query[0].nbr_channels,
+            self.global_meta['nbr_channels'],
+        )
+        self.assertEqual(
+            global_query[0].nbr_positions,
+            self.global_meta['nbr_positions'],
+        )
+        self.assertEqual(
+            global_query[0].nbr_timepoints,
+            self.global_meta['nbr_timepoints'],
+        )
+        self.assertEqual(
+            global_query[0].im_colors,
+            self.global_meta['im_colors'],
+        )
+        self.assertEqual(
+            global_query[0].bit_depth,
+            self.global_meta['bit_depth'],
+        )
 
     def test_insert_file(self):
         dataset_serial = 'TEST-2005-10-12-20-00-00-0001'
@@ -157,7 +187,6 @@ class TestDBOperations(db_basetest.DBBaseTest):
         # This is the second dataset inserted
         self.assertEqual(dataset.id, 2)
         self.assertEqual(dataset.dataset_serial, dataset_serial)
-        self.assertEqual(dataset.description, self.description)
         date_time = dataset.date_time
         self.assertEqual(date_time.year, 2005)
         self.assertEqual(date_time.month, 10)

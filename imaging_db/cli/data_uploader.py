@@ -4,6 +4,7 @@ import argparse
 import os
 import pandas as pd
 import time
+
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
 import imaging_db.filestorage.s3_storage as s3_storage
@@ -53,7 +54,6 @@ def parse_args():
         default=None,
         help="Number of treads to increase download speed"
     )
-
     return parser.parse_args()
 
 
@@ -91,19 +91,17 @@ def upload_data_and_update_db(args):
     # Make sure we can connect to the database
     with db_ops.session_scope(db_connection) as session:
         db_ops.test_connection(session)
-
     # Read and validate config json
     config_json = json_ops.read_json_file(
         json_filename=args.config,
         schema_name="CONFIG_SCHEMA",
     )
-
     # Assert that upload type is valid
     upload_type = config_json['upload_type'].lower()
     assert upload_type in {"file", "frames"}, \
         "upload_type should be 'file' or 'frames', not {}".format(
-            upload_type)
-
+            upload_type,
+        )
     if args.nbr_workers is not None:
         assert args.nbr_workers > 0, \
             "Nbr of worker must be >0, not {}".format(args.nbr_workers)
@@ -120,7 +118,6 @@ def upload_data_and_update_db(args):
         splitter_class = aux_utils.get_splitter_class(
             config_json['frames_format'],
         )
-
     # Upload all files
     for file_nbr, row in files_data.iterrows():
         # Assert that ID is correctly formatted
@@ -129,6 +126,7 @@ def upload_data_and_update_db(args):
             cli_utils.validate_id(dataset_serial)
         except AssertionError as e:
             print("Invalid ID:", e)
+            raise
 
         # Get S3 directory based on upload type
         if upload_type == "frames":
@@ -220,7 +218,7 @@ def upload_data_and_update_db(args):
                         file_name=file_name,
                         global_json_meta=global_json,
                         microscope=microscope,
-                        parent_dataset=row.parent_dataset_id,
+                        parent_dataset=parent_dataset_id,
                         sha256=sha,
                     )
                 print("File info for {} inserted in DB".format(dataset_serial))
