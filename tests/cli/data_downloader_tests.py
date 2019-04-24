@@ -217,6 +217,34 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         self.assertEqual(meta_json['bit_depth'], 'uint16')
 
     @patch('imaging_db.database.db_operations.session_scope')
+    def test_download_channel(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        args = argparse.Namespace(
+            id=self.dataset_serial,
+            login=self.credentials_path,
+            dest=dest_dir,
+            nbr_workers=None,
+            metadata=True,
+            download=True,
+            positions=None,
+            channels='1',
+            times=None,
+            slices=None,
+        )
+        data_downloader.download_data(args)
+        meta_path = os.path.join(
+            dest_dir,
+            self.dataset_serial,
+            'global_metadata.json',
+        )
+        frames_meta = pd.read_csv(meta_path)
+        for i, row in frames_meta.iterrows():
+            self.assertEqual(row.channel_idx, 1)
+
+    @patch('imaging_db.database.db_operations.session_scope')
     def test_download_file(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         # Create dest dir
