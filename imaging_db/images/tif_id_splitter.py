@@ -136,7 +136,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
         else:
             self.global_json = {}
         self.global_json["file_origin"] = self.data_path
-
+        print('float', float2uint)
         # Convert frames to numpy stack and collect metadata
         self.frames_meta = meta_utils.make_dataframe(nbr_frames=nbr_frames)
         self.frames_json = []
@@ -153,8 +153,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
             try:
                 im = page.asarray()
             except ValueError as e:
-                print("Can't read page ", i, self.data_path)
-                raise e
+                raise(e, "Can't read page ", i, self.data_path)
 
             if float2uint:
                 assert im.max() < 65536, "Im > 16 bit, max: {}".format(im.max())
