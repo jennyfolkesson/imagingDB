@@ -70,8 +70,8 @@ class TestTifFolderSplitter(unittest.TestCase):
                                       'Width': 15,
                                       'Height': 10},
                          }
-        json_filename = os.path.join(self.temp_path, 'metadata.txt')
-        json_ops.write_json_file(self.meta_dict, json_filename)
+        self.json_filename = os.path.join(self.temp_path, 'metadata.txt')
+        json_ops.write_json_file(self.meta_dict, self.json_filename)
 
         # Setup mock S3 bucket
         self.mock = mock_s3()
@@ -147,7 +147,6 @@ class TestTifFolderSplitter(unittest.TestCase):
             frame_i['ImageWidth'] = 15
             frame_i['ImageLength'] = 10
 
-
     def test_set_frame_info(self):
         meta_dict = {'PixelType': 'RGB',
                      'BitDepth': 8,
@@ -158,6 +157,16 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.assertEqual(self.frames_inst.bit_depth, 'uint8')
         self.assertEqual(self.frames_inst.im_colors, 3)
         self.assertListEqual(self.frames_inst.frame_shape, [150, 250])
+
+    def test_set_frame_info_uint16(self):
+        meta_dict = {'PixelType': 'GRAY',
+                     'BitDepth': 16,
+                     'Width': 250,
+                     'Height': 150,
+                     }
+        self.frames_inst.set_frame_info(meta_dict)
+        self.assertEqual(self.frames_inst.bit_depth, 'uint16')
+        self.assertEqual(self.frames_inst.im_colors, 1)
 
     @nose.tools.raises(ValueError)
     def test_set_frame_info(self):
@@ -198,4 +207,11 @@ class TestTifFolderSplitter(unittest.TestCase):
     def test_get_frames_and_metadata_no_parser(self):
         self.frames_inst.get_frames_and_metadata(
             filename_parser='nonexisting_function',
+        )
+
+    @nose.tools.raises(FileNotFoundError)
+    def test_get_frames_no_metadata(self):
+        os.remove(self.json_filename)
+        self.frames_inst.get_frames_and_metadata(
+            filename_parser='parse_sms_name',
         )

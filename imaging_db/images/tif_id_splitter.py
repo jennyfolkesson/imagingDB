@@ -153,7 +153,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
             try:
                 im = page.asarray()
             except ValueError as e:
-                raise(e, "Can't read page ", i, self.data_path)
+                raise ValueError("Can't read page ", i, self.data_path)
 
             if float2uint:
                 assert im.max() < 65536, "Im > 16 bit, max: {}".format(im.max())

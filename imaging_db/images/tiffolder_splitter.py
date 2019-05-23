@@ -139,8 +139,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                 os.path.join(self.data_path, "metadata.txt"),
             )
         except FileNotFoundError as e:
-            print("can't find metadata.txt file, global json will be empty", e)
-            self.global_json = {}
+            raise FileNotFoundError("Can't find metadata.txt file in directory", e)
 
         self.set_frame_info(self.global_json["Summary"])
 
