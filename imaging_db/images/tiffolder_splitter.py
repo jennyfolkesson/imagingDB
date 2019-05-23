@@ -9,7 +9,6 @@ import imaging_db.images.file_splitter as file_splitter
 import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
-import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
