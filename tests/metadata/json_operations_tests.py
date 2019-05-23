@@ -24,7 +24,7 @@ def test_valid_json():
         nose.tools.assert_equal(json_object, valid_json)
 
 
-@nose.tools.raises(json.JSONDecodeError)
+@nose.tools.raises(ValueError)
 def test_not_a_json():
     with TempDirectory() as tempdir:
         invalid_json = {
@@ -88,7 +88,36 @@ def test_not_a_schema():
         schema="NOTA_SCHEMA")
 
 
+@nose.tools.raises(AssertionError)
+def test_bad_schema():
+    json_obj = {
+        "drivername": "postgres",
+        "username": "user"
+    }
+    json_ops.validate_schema(
+        json_obj,
+        schema=3)
+
+
 @nose.tools.raises(FileNotFoundError)
 def test_nonexisting_json():
-    json_object = json_ops.read_json_file("not_a_json_file.json")
+    json_ops.read_json_file("not_a_json_file.json")
 
+
+def test_str2json():
+    expected_json = {
+        "ChannelIndex": 4,
+        'COM1-DataBits': '8'
+    }
+    json_obj = json_ops.str2json(json.dumps(expected_json))
+    nose.tools.assert_dict_equal(json_obj, expected_json)
+
+
+@nose.tools.raises(ValueError)
+def test_str2json_bad_json():
+    json_ops.str2json('This is not a json')
+
+
+@nose.tools.raises(ValueError)
+def test_get_global_json():
+    json_ops.get_global_json([], 'file_name')
