@@ -44,12 +44,14 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         :param page page: Page read from tifffile
         """
         self.frame_shape = [page.tags["ImageLength"].value,
-                       page.tags["ImageWidth"].value]
-        # Encode color channel information
+                            page.tags["ImageWidth"].value]
+        # Set image color channel info
         self.im_colors = 1
-        if len(self.frame_shape) == 3:
-            self.im_colors = self.frame_shape[2]
         bits_val = page.tags["BitsPerSample"].value
+        if isinstance(bits_val, tuple):
+            # This means it's not a grayscale image
+            self.im_colors = len(bits_val)
+            bits_val = bits_val[0]
         if bits_val == 16:
             self.bit_depth = "uint16"
         elif bits_val == 8:
@@ -70,7 +72,6 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         """
         frames = tifffile.TiffFile(file_path)
         # Get global metadata
-        page = frames.pages[0]
         nbr_frames = len(frames.pages)
         # Create image stack with image bit depth 16 or 8
         im_stack = np.empty((self.frame_shape[0],
