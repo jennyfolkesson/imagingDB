@@ -74,6 +74,10 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_connection(self):
         db_ops.test_connection(self.session)
 
+    @nose.tools.raises(ConnectionError)
+    def test_connection_no_session(self):
+        db_ops.test_connection('session')
+
     @nose.tools.raises(AssertionError)
     def test_assert_unique_id(self):
         self.db_inst.assert_unique_id(self.session)
@@ -231,6 +235,44 @@ class TestDBOperations(db_basetest.DBBaseTest):
         for i, c in enumerate(range(1, 3)):
             im_name = 'im_c00{}_z001_t005_p050.png'.format(c)
             self.assertEqual(sliced_frames[i].file_name, im_name)
+
+    @nose.tools.raises(AssertionError)
+    def test_slice_frames_no_matching_channels(self):
+        self.db_inst._slice_frames(
+            frames=self.frames,
+            channels=('1', '2'),
+        )
+
+    @nose.tools.raises(ValueError)
+    def test_slice_frames_invalid_channel(self):
+        self.db_inst._slice_frames(
+            frames=self.frames,
+            channels=[1],
+        )
+
+    @nose.tools.raises(ValueError)
+    def test_slice_frames_invalid_channel_tuple(self):
+        self.db_inst._slice_frames(
+            frames=self.frames,
+            pos=(50,),
+            times=(5,),
+            channels=(1, '2'),
+            slices=(1,),
+        )
+
+    @nose.tools.raises(ValueError)
+    def test_slice_frames_invalid_time(self):
+        self.db_inst._slice_frames(
+            frames=self.frames,
+            times='2',
+        )
+
+    @nose.tools.raises(ValueError)
+    def test_slice_frames_invalid_pos(self):
+        self.db_inst._slice_frames(
+            frames=self.frames,
+            pos=3,
+        )
 
     def test_get_meta_from_frames(self):
         global_meta, frames_meta = self.db_inst._get_meta_from_frames(
