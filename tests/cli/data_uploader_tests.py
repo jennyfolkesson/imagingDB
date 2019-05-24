@@ -1,6 +1,7 @@
 import argparse
 import boto3
 import itertools
+import json
 from moto import mock_s3
 import nose.tools
 import numpy as np
@@ -55,12 +56,17 @@ class TestDataUploader(db_basetest.DBBaseTest):
         )
         self.dataset_serial = 'TEST-2005-06-09-20-00-00-1000'
         upload_csv = pd.DataFrame(
-            columns=['dataset_id', 'file_name', 'description'],
+            columns=['dataset_id',
+                     'file_name',
+                     'description',
+                     'parent_dataset_id'],
         )
         upload_csv = upload_csv.append(
             {'dataset_id': self.dataset_serial,
              'file_name': self.file_path,
-             'description': 'Testing'},
+             'description': 'Testing',
+             'parent_dataset_id': None,
+             },
             ignore_index=True,
         )
         self.csv_path = os.path.join(self.temp_path, "test_upload.csv")
@@ -229,6 +235,21 @@ class TestDataUploader(db_basetest.DBBaseTest):
         )
         data_uploader.upload_data_and_update_db(args)
 
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_frames_already_in_db(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        args = argparse.Namespace(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=self.config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+        # Try uploading a second time
+        data_uploader.upload_data_and_update_db(args)
+
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_file(self, mock_session):
         # Upload the same file but as file instead of frames
@@ -287,6 +308,29 @@ class TestDataUploader(db_basetest.DBBaseTest):
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_file_already_in_db(self, mock_session):
+        # Upload the same file but as file instead of frames
+        mock_session.return_value.__enter__.return_value = self.session
+
+        config_path = os.path.join(
+            os.path.dirname(__file__),
+            '..',
+            '..',
+            'config_file.json',
+        )
+        args = argparse.Namespace(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=config_path,
+            nbr_workers=None,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+        # Try uploading a second time
+        data_uploader.upload_data_and_update_db(args)
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
     def test_no_csv(self, mock_session):
         # Upload the same file but as file instead of frames
         mock_session.return_value.__enter__.return_value = self.session
@@ -311,6 +355,73 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             nbr_workers=-1,
+            override=False,
+        )
+        data_uploader.upload_data_and_update_db(args)
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_ometif(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+
+        dataset_serial = 'ISP-2005-01-01-01-00-00-0001'
+        # Temporary frame
+        im = np.ones((10, 15), dtype=np.uint16)
+        # Metadata
+        mmmetadata = json.dumps({
+            "ChannelIndex": 1,
+            "Slice": 2,
+            "FrameIndex": 3,
+            "PositionIndex": 4,
+            "Channel": 'channel_name',
+        })
+        extra_tags = [('MicroManagerMetadata', 's', 0, mmmetadata, True)]
+        ijmeta = {
+            "Info": json.dumps({"InitialPositionList":
+                                [{"Label": "Pos1"}, {"Label": "Pos3"}]}),
+        }
+        # Save test ome tif file
+        file_path = os.path.join(self.temp_path, "test_Pos1.ome.tif")
+        tifffile.imsave(file_path,
+                        im,
+                        ijmetadata=ijmeta,
+                        extratags=extra_tags,
+                        )
+        upload_csv = pd.DataFrame(
+            columns=['dataset_id',
+                     'file_name',
+                     'description',
+                     'positions',
+                     'schema_filename',
+                     ],
+        )
+        # Get path to json schema file
+        dir_name = os.path.dirname(__file__)
+        schema_file_path = os.path.realpath(
+            os.path.join(dir_name, '..', '..', 'metadata_schema.json'),
+        )
+        upload_csv = upload_csv.append(
+            {'dataset_id': dataset_serial,
+             'file_name': file_path,
+             'description': 'Testing',
+             'positions': [1],
+             'schema_filename': schema_file_path,
+             },
+            ignore_index=True,
+        )
+        csv_path = os.path.join(self.temp_path, "test_ometif_upload.csv")
+        upload_csv.to_csv(csv_path)
+        config_path = os.path.join(
+            os.path.dirname(__file__),
+            '..',
+            '..',
+            'config_ome_tiff.json',
+        )
+        # Upload data
+        args = argparse.Namespace(
+            csv=csv_path,
+            login=self.credentials_path,
+            config=config_path,
+            nbr_workers=None,
             override=False,
         )
         data_uploader.upload_data_and_update_db(args)

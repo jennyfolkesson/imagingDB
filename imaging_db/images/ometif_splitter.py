@@ -3,7 +3,7 @@ import numpy as np
 import os
 import tifffile
 from tqdm import tqdm
-
+import pdb
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_operations as json_ops
@@ -57,8 +57,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         elif bits_val == 8:
             self.bit_depth = "uint8"
         else:
-            print("Bit depth must be 16 or 8, not {}".format(bits_val))
-            raise ValueError
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(bits_val))
 
     def split_file(self, file_path, schema_filename):
         """
@@ -151,6 +150,8 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         if os.path.isfile(self.data_path):
             # Run through processing only once
             file_paths = [self.data_path]
+            # Only one file so don't consider positions
+            positions = []
         else:
             # Get position files in the folder
             file_paths = glob.glob(os.path.join(self.data_path, "*.ome.tif"))
@@ -159,6 +160,8 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
             # Parse positions
             if isinstance(positions, str):
                 positions = json_ops.str2json(positions)
+                if isinstance(positions, int):
+                    positions = [positions]
 
         # Read first file to find available positions
         frames = tifffile.TiffFile(file_paths[0])
