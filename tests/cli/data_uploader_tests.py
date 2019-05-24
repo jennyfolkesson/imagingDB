@@ -235,7 +235,6 @@ class TestDataUploader(db_basetest.DBBaseTest):
         )
         data_uploader.upload_data_and_update_db(args)
 
-    @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_frames_already_in_db(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
@@ -244,7 +243,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             nbr_workers=None,
-            override=False,
+            override=True,
         )
         data_uploader.upload_data_and_update_db(args)
         # Try uploading a second time
@@ -306,7 +305,6 @@ class TestDataUploader(db_basetest.DBBaseTest):
                                              Prefix=key)
         self.assertEqual(response['KeyCount'], 1)
 
-    @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_file_already_in_db(self, mock_session):
         # Upload the same file but as file instead of frames
@@ -323,7 +321,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=config_path,
             nbr_workers=None,
-            override=False,
+            override=True,
         )
         data_uploader.upload_data_and_update_db(args)
         # Try uploading a second time
