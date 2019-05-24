@@ -19,7 +19,7 @@ def import_class(module_name, cls_name):
 
         if inspect.isclass(cls):
             return cls
-    except ImportError as e:
+    except Exception as e:
         raise ImportError(e)
 
 

@@ -401,7 +401,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             {'dataset_id': dataset_serial,
              'file_name': file_path,
              'description': 'Testing',
-             'positions': [1],
+             'positions': 1,
              'schema_filename': schema_file_path,
              },
             ignore_index=True,
