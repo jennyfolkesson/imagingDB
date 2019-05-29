@@ -3,7 +3,7 @@ import numpy as np
 import os
 import tifffile
 from tqdm import tqdm
-import pdb
+
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_operations as json_ops
