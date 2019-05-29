@@ -125,8 +125,7 @@ def upload_data_and_update_db(args):
         try:
             cli_utils.validate_id(dataset_serial)
         except AssertionError as e:
-            print("Invalid ID:", e)
-            raise
+            raise AssertionError("Invalid ID:", e)
 
         # Get S3 directory based on upload type
         if upload_type == "frames":

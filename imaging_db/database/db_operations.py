@@ -32,9 +32,8 @@ def session_scope(credentials_str, echo_sql=False):
         yield session
         session.commit()
     except Exception as e:
-        print(e)
         session.rollback()
-        raise
+        raise Exception(e)
     finally:
         session.close()
 
@@ -48,8 +47,7 @@ def test_connection(session):
     try:
         session.execute('SELECT 1')
     except Exception as e:
-        print("Can't connect to database", e)
-        raise ConnectionError
+        raise ConnectionError("Can't connect to database", e)
 
 
 class DatabaseOperations:
@@ -98,12 +96,12 @@ class DatabaseOperations:
                     .filter(DataSet.dataset_serial == parent_dataset).one()
                 parent_key = parent.id
             except Exception as e:
-                print("Parent {} not found for data set {}. {}".format(
+                error_str = "Parent {} not found for data set {}. {}".format(
                     parent_dataset,
                     self.dataset_serial,
                     e,
-                ))
-                raise ValueError
+                )
+                raise ValueError(error_str)
         return parent_key
 
     def insert_frames(self,
@@ -347,7 +345,7 @@ class DatabaseOperations:
         elif type(pos) is tuple:
             sliced_frames = sliced_frames.filter(Frames.pos_idx.in_(pos))
         else:
-            raise ValueError('Invalid slice query')
+            raise ValueError('Invalid position query')
 
         assert sliced_frames.count() > 0,\
             'No frames matched the query'

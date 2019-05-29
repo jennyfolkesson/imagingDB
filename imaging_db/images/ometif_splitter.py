@@ -44,19 +44,20 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         :param page page: Page read from tifffile
         """
         self.frame_shape = [page.tags["ImageLength"].value,
-                       page.tags["ImageWidth"].value]
-        # Encode color channel information
+                            page.tags["ImageWidth"].value]
+        # Set image color channel info
         self.im_colors = 1
-        if len(self.frame_shape) == 3:
-            self.im_colors = self.frame_shape[2]
         bits_val = page.tags["BitsPerSample"].value
+        if isinstance(bits_val, tuple):
+            # This means it's not a grayscale image
+            self.im_colors = len(bits_val)
+            bits_val = bits_val[0]
         if bits_val == 16:
             self.bit_depth = "uint16"
         elif bits_val == 8:
             self.bit_depth = "uint8"
         else:
-            print("Bit depth must be 16 or 8, not {}".format(bits_val))
-            raise ValueError
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(bits_val))
 
     def split_file(self, file_path, schema_filename):
         """
@@ -70,7 +71,6 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         """
         frames = tifffile.TiffFile(file_path)
         # Get global metadata
-        page = frames.pages[0]
         nbr_frames = len(frames.pages)
         # Create image stack with image bit depth 16 or 8
         im_stack = np.empty((self.frame_shape[0],
@@ -150,6 +150,8 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
         if os.path.isfile(self.data_path):
             # Run through processing only once
             file_paths = [self.data_path]
+            # Only one file so don't consider positions
+            positions = []
         else:
             # Get position files in the folder
             file_paths = glob.glob(os.path.join(self.data_path, "*.ome.tif"))
@@ -158,6 +160,8 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
             # Parse positions
             if isinstance(positions, str):
                 positions = json_ops.str2json(positions)
+                if isinstance(positions, int):
+                    positions = [positions]
 
         # Read first file to find available positions
         frames = tifffile.TiffFile(file_paths[0])
