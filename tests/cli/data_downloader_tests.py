@@ -1,4 +1,3 @@
-import argparse
 import boto3
 import cv2
 import glob
@@ -85,14 +84,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             'config_tif_id.json',
         )
         # Upload frames
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Upload file
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
         self.file_s3_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
@@ -109,14 +105,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             '..',
             'config_file.json',
         )
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
 
     def tearDown(self):
         """

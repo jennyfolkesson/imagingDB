@@ -1,4 +1,3 @@
-import argparse
 import boto3
 import itertools
 import json
@@ -111,14 +110,11 @@ class TestDataUploader(db_basetest.DBBaseTest):
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_frames(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Query database to find data_set and frames
         datasets = self.session.query(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
@@ -225,29 +221,28 @@ class TestDataUploader(db_basetest.DBBaseTest):
         )
         invalid_csv_path = os.path.join(self.temp_path, "invalid_upload.csv")
         upload_csv.to_csv(invalid_csv_path)
-
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=invalid_csv_path,
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
 
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_frames_already_in_db(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
             override=True,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Try uploading a second time
-        data_uploader.upload_data_and_update_db(args)
+        data_uploader.upload_data_and_update_db(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=self.config_path,
+            override=True,
+        )
 
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_file(self, mock_session):
@@ -260,14 +255,11 @@ class TestDataUploader(db_basetest.DBBaseTest):
             '..',
             'config_file.json',
         )
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
             login=self.credentials_path,
             config=config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Query database to find data_set and file_global
         datasets = self.session.query(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
@@ -316,46 +308,42 @@ class TestDataUploader(db_basetest.DBBaseTest):
             '..',
             'config_file.json',
         )
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
             login=self.credentials_path,
             config=config_path,
-            nbr_workers=None,
             override=True,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Try uploading a second time
-        data_uploader.upload_data_and_update_db(args)
+        data_uploader.upload_data_and_update_db(
+            csv=self.csv_path,
+            login=self.credentials_path,
+            config=config_path,
+            override=True,
+        )
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
     def test_no_csv(self, mock_session):
         # Upload the same file but as file instead of frames
         mock_session.return_value.__enter__.return_value = self.session
-
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv='no-csv-path',
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
     def test_negative_workers(self, mock_session):
         # Upload the same file but as file instead of frames
         mock_session.return_value.__enter__.return_value = self.session
-
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
             nbr_workers=-1,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
 
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_ometif(self, mock_session):
@@ -415,11 +403,8 @@ class TestDataUploader(db_basetest.DBBaseTest):
             'config_ome_tiff.json',
         )
         # Upload data
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=csv_path,
             login=self.credentials_path,
             config=config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
