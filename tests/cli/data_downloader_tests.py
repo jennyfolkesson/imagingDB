@@ -155,19 +155,12 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        # Download data
+        data_downloader.download_data(
             id=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
         # Images are separated by slice first then channel
         im_order = [0, 2, 4, 1, 3, 5]
         it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
@@ -222,19 +215,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        # Download data
+        data_downloader.download_data(
             id=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
-            positions=None,
             channels='1',
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
         meta_path = os.path.join(
             dest_dir,
             self.dataset_serial,
@@ -250,19 +237,15 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        # Download data
+        data_downloader.download_data(
             id=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
             positions='0',
-            channels=None,
             times='0',
             slices='1',
         )
-        data_downloader.download_data(args)
         meta_path = os.path.join(
             dest_dir,
             self.dataset_serial,
@@ -280,19 +263,14 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        # Download data
+        data_downloader.download_data(
             id=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
         # See if file has been downloaded
         file_path = os.path.join(
             dest_dir,
@@ -312,19 +290,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             os.path.join('dest_dir', self.dataset_serial_file),
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        data_downloader.download_data(
             id=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -333,19 +305,14 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        data_downloader.download_data(
             id=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
             download=False,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -357,19 +324,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             os.path.join('dest_dir', self.dataset_serial_file),
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        data_downloader.download_data(
             id='Not-a-serial',
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -378,16 +339,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
+        data_downloader.download_data(
             id=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=-2,
             metadata=False,
             download=False,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=-2,
         )
-        data_downloader.download_data(args)
