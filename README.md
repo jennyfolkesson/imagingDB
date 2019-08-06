@@ -162,6 +162,7 @@ make stop-local-db
 ## Built With
 
 * [SQLAlchemy](https://www.sqlalchemy.org/) - Python SQL Toolkit and Object Relational Mapper
+* [tifffile](https://pypi.org/project/tifffile/) - Read image and metadata from TIFF-like files used in bioimaging
 * [Boto 3](https://boto3.readthedocs.io/en/latest/) - AWS SDK for Python
 
 ## Authors
