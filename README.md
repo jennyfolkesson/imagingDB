@@ -135,7 +135,7 @@ If you want to launch a Jupyter notebook inside your container, you can do so wi
 ```buildoutcfg
 jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --no-browser
 ```
-Then you can access your notebooks in your browser at (if you're on fry):
+Then you can access your notebooks in your browser using your server name (e.g. if you're on the biohub internal server named fry):
 ```buildoutcfg
 http://fry:<whatever port you mapped to when starting up docker container>
 ```
@@ -154,7 +154,7 @@ nosetests tests/
 ```
 The test and dev databases are mapped to ports 5433 and 5432 respectively, with host localhost and username
 'username' and password 'password'.
-To stop the Docker containers, just run
+To stop the Docker containers, run
 ```buildoutcfg
 make stop-local-db
 ```
