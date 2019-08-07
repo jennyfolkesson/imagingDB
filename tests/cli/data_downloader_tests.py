@@ -150,7 +150,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         # Download data
         data_downloader.download_data(
-            id=self.dataset_serial,
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
         )
@@ -210,7 +210,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         # Download data
         data_downloader.download_data(
-            id=self.dataset_serial,
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
             channels='1',
@@ -232,7 +232,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         # Download data
         data_downloader.download_data(
-            id=self.dataset_serial,
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
             positions='0',
@@ -258,7 +258,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         # Download data
         data_downloader.download_data(
-            id=self.dataset_serial_file,
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             metadata=False,
@@ -284,7 +284,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         data_downloader.download_data(
-            id=self.dataset_serial_file,
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             nbr_workers=2,
@@ -299,7 +299,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         data_downloader.download_data(
-            id=self.dataset_serial_file,
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             metadata=False,
@@ -318,7 +318,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         data_downloader.download_data(
-            id='Not-a-serial',
+            dataset_serial='Not-a-serial',
             login=self.credentials_path,
             dest=dest_dir,
             metadata=False,
@@ -333,7 +333,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
         data_downloader.download_data(
-            id=self.dataset_serial_file,
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             metadata=False,
