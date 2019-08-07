@@ -56,20 +56,37 @@ def get_datasets(session, search_dict=None):
     query database and return datasets that match the criteria.
 
     :param session: SQLAlchemy session
-    :param dict search_dict: Dictionary with query criteria
-    :return DataSet datasets: dataset IDs that match the query
+    :param dict search_dict: Dictionary with query criteria. Currently available
+        search keys are:
+        project_id: First part of dataset_serial containing project ID (e.g. ML)
+        microscope: Microscope column
+        start_date: Find >= dates in date_time column
+        end_date: Find <= dates in date_time column
+        description: Find substring in description column
+    :return list datasets: DataSets that match the query
     """
     datasets = session.query(DataSet) \
-        .join(FramesGlobal) \
-        .join(Frames) \
         .order_by(DataSet.dataset_serial)
     if 'project_id' in search_dict:
-        assert isinstance(search_dict['project_id'], str),\
-            "Project ID should be str not {}".format(search_dict['project_id'])
         datasets = datasets.filter(
             DataSet.dataset_serial.contains(search_dict['project_id']),
         )
-
+    if 'microscope' in search_dict:
+        datasets = datasets.filter(
+            DataSet.microscope.contains(search_dict['microscope']),
+        )
+    if 'start_date' in search_dict:
+        datasets = datasets.filter(
+            DataSet.date_time >= search_dict['start_date'],
+        )
+    if 'end_date' in search_dict:
+        datasets = datasets.filter(
+            DataSet.date_time <= search_dict['end_date'],
+        )
+    if 'description' in search_dict:
+        datasets = datasets.filter(
+            DataSet.description.contains(search_dict['description']),
+        )
     return datasets.all()
 
 

@@ -73,8 +73,18 @@ class TestDBOperations(db_basetest.DBBaseTest):
             'PROJECT-2010-04-01-00-00-00-0001',
             'PROJECT-2010-05-01-00-00-00-0001',
             'PROJECT-2010-06-01-00-00-00-0001']
-        self.descriptions = ['First dataset', 'Second dataset', 'Third dataset']
+        self.descriptions = ['First dataset test', 'Second dataset', 'Third dataset']
         self.microscopes = ['scope1', 'scope2', 'scope2']
+        # Add a few more datasets
+        for i in range(len(self.dataset_ids)):
+            new_dataset = db_ops.DataSet(
+                dataset_serial=self.dataset_ids[i],
+                description=self.descriptions[i],
+                frames=True,
+                microscope=self.microscopes[i],
+                parent_id=None,
+            )
+            self.session.add(new_dataset)
 
     def tearDown(self):
         super().tearDown()
@@ -92,25 +102,37 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.assertEqual(len(datasets), 1)
         self.assertEqual(datasets[0].dataset_serial, self.dataset_serial)
 
-    # def test_get_datasets_project(self):
-    #     # Add a few more datasets
-    #     # TODO: Need to add this in db_operations for query to work
-    #     for i in range(len(self.dataset_ids)):
-    #         new_dataset = db_ops.DataSet(
-    #             dataset_serial=self.dataset_ids[i],
-    #             description=self.descriptions[i],
-    #             frames=True,
-    #             microscope=self.microscopes[i],
-    #             parent_id=None,
-    #         )
-    #         self.session.add(new_dataset)
-    #
-    #     search_dict = {'project_id': 'PROJECT'}
-    #     datasets = db_ops.get_datasets(self.session, search_dict)
-    #     self.assertEqual(len(datasets), 3)
-    #     for i, d in enumerate(datasets):
-    #         print(i, d.dataset_serial)
-    #         self.assertEqual(d.dataset_serial, self.dataset_ids[i])
+    def test_get_datasets_project(self):
+        search_dict = {'project_id': 'PROJECT'}
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 3)
+        for d in datasets:
+            self.assertTrue('PROJECT' in d.dataset_serial)
+
+    def test_get_datasets_scope(self):
+        search_dict = {'microscope': 'scope2'}
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 2)
+        for d in datasets:
+            self.assertEqual(d.microscope, 'scope2')
+
+    def test_get_datasets_dates(self):
+        search_dict = {
+            'start_date': '2010-04-15',
+            'end_date': '2010-05-15',
+        }
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0].dataset_serial, self.dataset_ids[1])
+
+    def test_get_datasets_description(self):
+        search_dict = {
+            'description': 'test',
+            'project_id': 'PROJECT',
+        }
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0].dataset_serial, self.dataset_ids[0])
 
     @nose.tools.raises(AssertionError)
     def test_assert_unique_id(self):
