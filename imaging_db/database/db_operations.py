@@ -50,8 +50,34 @@ def test_connection(session):
         raise ConnectionError("Can't connect to database", e)
 
 
+def get_datasets(session, search_dict=None):
+    """
+    Given dataset search criteria such as project ID, start/end date etc,
+    query database and return datasets that match the criteria.
+
+    :param session: SQLAlchemy session
+    :param dict search_dict: Dictionary with query criteria
+    :return DataSet datasets: dataset IDs that match the query
+    """
+    datasets = session.query(DataSet) \
+        .join(FramesGlobal) \
+        .join(Frames) \
+        .order_by(DataSet.dataset_serial)
+    if 'project_id' in search_dict:
+        assert isinstance(search_dict['project_id'], str),\
+            "Project ID should be str not {}".format(search_dict['project_id'])
+        datasets = datasets.filter(
+            DataSet.dataset_serial.contains(search_dict['project_id']),
+        )
+
+    return datasets.all()
+
+
 class DatabaseOperations:
-    """Class handling standard input and output database operations"""
+    """
+    Class handling standard input and output database operations for a
+    specific dataset given an ID.
+    """
 
     def __init__(self, dataset_serial):
         """
@@ -127,7 +153,7 @@ class DatabaseOperations:
         :param dict global_json_meta: Arbitrary global metadata that can be
             converted into JSONB format
         :param str microscope: microscope name
-        :param str parent_dataset: Assign parent if not null
+        :param str/None parent_dataset: Assign parent if not none
         """
         # Check if ID already exist
         datasets = session.query(DataSet) \
@@ -247,7 +273,7 @@ class DatabaseOperations:
         """
         # Check if ID already exist
         dataset = session.query(DataSet) \
-               .filter(DataSet.dataset_serial == self.dataset_serial).one()
+            .filter(DataSet.dataset_serial == self.dataset_serial).one()
 
         if dataset.frames is False:
             # Get file
@@ -276,8 +302,8 @@ class DatabaseOperations:
 
             return s3_dir, file_names
 
-    def _slice_frames(self,
-                      frames,
+    @staticmethod
+    def _slice_frames(frames,
                       pos='all',
                       times='all',
                       channels='all',
@@ -352,7 +378,8 @@ class DatabaseOperations:
 
         return sliced_frames
 
-    def _get_meta_from_frames(self, frames):
+    @staticmethod
+    def _get_meta_from_frames(frames):
         """
         Extract global meta as well as info for each frame given
         a frames query.

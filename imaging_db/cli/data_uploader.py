@@ -3,7 +3,6 @@
 import argparse
 import os
 import pandas as pd
-import time
 
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
@@ -28,16 +27,19 @@ def parse_args():
     parser.add_argument(
         '--csv',
         type=str,
+        required=True,
         help="Full path to csv file",
     )
     parser.add_argument(
         '--login',
         type=str,
+        required=True,
         help="Full path to file containing JSON with DB login credentials",
     )
     parser.add_argument(
         '--config',
         type=str,
+        required=True,
         help="Full path to file containing JSON with upload configurations",
     )
     parser.add_argument(
@@ -95,9 +97,7 @@ def upload_data_and_update_db(csv,
 
     # Get database connection URI
     db_connection = db_utils.get_connection_str(login)
-    # Make sure we can connect to the database
-    with db_ops.session_scope(db_connection) as session:
-        db_ops.test_connection(session)
+    db_utils.check_connection(db_connection)
     # Read and validate config json
     config_json = json_ops.read_json_file(
         json_filename=config,

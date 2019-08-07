@@ -1,3 +1,4 @@
+import imaging_db.database.db_operations as db_ops
 import imaging_db.metadata.json_operations as json_ops
 
 
@@ -35,3 +36,17 @@ def get_connection_str(credentials_filename):
         schema_name="CREDENTIALS_SCHEMA")
     # Convert json to string compatible with engine
     return json_to_uri(credentials_json)
+
+
+def check_connection(db_connection):
+    """
+    Make sure you can connect to database before anything else.
+
+    :param str db_connection: URI for connecting to the DB
+    :raises IOError: If you can't connect to the DB
+    """
+    try:
+        with db_ops.session_scope(db_connection) as session:
+            db_ops.test_connection(session)
+    except Exception as e:
+        raise IOError("Can't connect to DB: {}".format(e))

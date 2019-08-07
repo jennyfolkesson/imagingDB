@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument(
         '--id',
         type=str,
+        required=True,
         help="Unique dataset identifier",
     )
     parser.add_argument(
@@ -49,9 +50,9 @@ def parse_args():
     parser.add_argument(
         '--dest',
         type=str,
+        required=True,
         help="Main destination directory, in which a subdir named args.id "
              "\will be created",
-        required=True
     )
     parser.add_argument(
         '--metadata',
@@ -80,6 +81,7 @@ def parse_args():
     parser.add_argument(
         '--login',
         type=str,
+        required=True,
         help="Full path to file containing JSON with DB login credentials",
     )
     parser.add_argument(
@@ -92,7 +94,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def download_data(id,
+def download_data(dataset_serial,
                   login,
                   dest,
                   metadata=True,
@@ -106,7 +108,7 @@ def download_data(id,
     Find all files associated with unique project identifier and
     download them to a local directory.
 
-    :param str id: Unique dataset identifier
+    :param str dataset_serial: Unique dataset identifier
     :param str login: Full path to json file containing database login
             credentials
     :param str dest: Local destination directory name
@@ -124,7 +126,6 @@ def download_data(id,
             names (default None downloads all)
     :param list, None slices: Slice (z) integer indices (Default None downloads all)
     """
-    dataset_serial = id
     try:
         cli_utils.validate_id(dataset_serial)
     except AssertionError as e:
@@ -142,15 +143,12 @@ def download_data(id,
 
     # Get database connection URI
     db_connection = db_utils.get_connection_str(login)
+    db_utils.check_connection(db_connection)
+
     # Instantiate database class
-    try:
-        db_inst = db_ops.DatabaseOperations(
-            dataset_serial=dataset_serial,
-        )
-        with db_ops.session_scope(db_connection) as session:
-            db_ops.test_connection(session)
-    except Exception as e:
-        raise IOError("Can't instantiate DB: {}".format(e))
+    db_inst = db_ops.DatabaseOperations(
+        dataset_serial=dataset_serial,
+    )
 
     if metadata is False:
         # Just download file(s)
@@ -230,7 +228,7 @@ def download_data(id,
 if __name__ == '__main__':
     args = parse_args()
     download_data(
-        id=args.id,
+        dataset_serial=args.id,
         login=args.login,
         dest=args.dest,
         metadata=args.metadata,
