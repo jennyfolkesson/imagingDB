@@ -79,7 +79,7 @@ def upload_data_and_update_db(csv,
                 list positions: Which position files in folder to upload.
                 Uploads all if left empty and file_name is a folder.
                 Only valid for ome-tiff uploads.
-    :param str config: Full path co json config file containing the fields:
+    :param str config: Full path to json config file containing the fields:
             str upload_type: Specify if the file should be split prior to upload
                 Valid options: 'frames' or 'file'
             str frames_format: Which file splitter class to use.
