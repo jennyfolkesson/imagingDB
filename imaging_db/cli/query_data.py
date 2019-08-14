@@ -69,8 +69,8 @@ def query_data(login,
     :param str project_id: First part of dataset_serial containing
             project ID (e.g. ML)
     :param str microscope: Microscope column
-    :param str start_date: Find >= dates in date_time column
-    :param str end_date: Find <= dates in date_time column
+    :param str start_date: Format YYYY-MM-DD. Find >= dates in date_time column
+    :param str end_date: Format YYYY-MM-DD. Find <= dates in date_time column
     :param str description: Find substring in description column
     """
     # Get database connection URI

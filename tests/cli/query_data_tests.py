@@ -148,6 +148,21 @@ class TestQueryData(db_basetest.DBBaseTest):
         )
 
     @patch('imaging_db.database.db_operations.session_scope')
+    def test_query_data_scope_no_return_datasets(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        with captured_output() as (out, err):
+            query_data.query_data(
+                login=self.credentials_path,
+                project_id='MEOW',
+                microscope='scope1',
+            )
+        std_output = out.getvalue().strip()
+        self.assertEqual(
+            std_output,
+            "Number of datasets matching your query: 0"
+        )
+
+    @patch('imaging_db.database.db_operations.session_scope')
     def test_query_data_description(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         with captured_output() as (out, err):
@@ -170,4 +185,12 @@ class TestQueryData(db_basetest.DBBaseTest):
             login=self.credentials_path,
             start_date='2010-06-01',
             end_date='2010-05-01',
+        )
+
+    @nose.tools.raises(TypeError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_query_data_no_loging(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        query_data.query_data(
+            start_date='2010-05-01',
         )
