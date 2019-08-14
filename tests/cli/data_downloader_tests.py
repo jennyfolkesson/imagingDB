@@ -142,6 +142,21 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.assertEqual(parsed_args.login, 'test_login.json')
             self.assertEqual(parsed_args.nbr_workers, 5)
 
+    def test_parse_args_defaults(self):
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--id', self.dataset_serial,
+                    '--dest', 'dest_path',
+                    '--login', 'test_login.json']):
+            parsed_args = data_downloader.parse_args()
+            self.assertIsNone(parsed_args.positions)
+            self.assertIsNone(parsed_args.times)
+            self.assertIsNone(parsed_args.channels)
+            self.assertIsNone(parsed_args.slices)
+            self.assertTrue(parsed_args.metadata)
+            self.assertTrue(parsed_args.download)
+            self.assertIsNone(parsed_args.nbr_workers)
+
     @patch('imaging_db.database.db_operations.session_scope')
     def test_download_frames(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session

@@ -332,10 +332,10 @@ class DatabaseOperations:
 
     @staticmethod
     def _slice_frames(frames,
-                      positions='all',
-                      times='all',
-                      channels='all',
-                      slices='all'):
+                      positions=None,
+                      times=None,
+                      channels=None,
+                      slices=None):
         """
         Get specific slices of a set of Frames
 
@@ -353,7 +353,6 @@ class DatabaseOperations:
         :raises ValueError: If an illegal type is given
         :raises AssertionError: If both channels and channel_ids are specified.
         """
-
         sliced_frames = frames
 
         # Filter by channel

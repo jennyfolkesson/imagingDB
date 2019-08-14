@@ -1,3 +1,6 @@
+import datetime
+
+
 def validate_id(id_str):
     """
     Assert that the ID follows the naming convention
@@ -36,3 +39,30 @@ def validate_id(id_str):
         "Serial number should be 4 digits, {}".format(substrs[7])
     assert 0 <= int(substrs[7]) <= 9999,\
         "Serial number should be 4 integers {}".format(substrs[7])
+
+
+def validate_date(date_str):
+    """
+    Make sure string is a valid date.
+
+    :param str date_str: Date in the format YYYY-MM-DD
+    :raises ValueError: If string is not a valid date
+    """
+    try:
+        return datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+
+
+def assert_date_order(start_date, end_date):
+    """
+    Asserts that end date comes after start date.
+
+    :param str start_date: Start date in the format YYYY-MM-DD
+    :param str end_date: End date in the format YYYY-MM-DD
+    :return bool: True if end date is after start date
+    """
+    start_datetime = validate_date(start_date)
+    end_datetime = validate_date(end_date)
+    assert end_datetime > start_datetime,\
+        "End date {} must come after start date {}".format(end_date, start_date)

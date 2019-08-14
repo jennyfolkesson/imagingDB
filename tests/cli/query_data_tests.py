@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import nose.tools
 import os
 import sys
 from io import StringIO
@@ -159,4 +160,14 @@ class TestQueryData(db_basetest.DBBaseTest):
             std_output,
             "Number of datasets matching your query: 1\n" +
             "0 PROJECT-2010-05-01-00-00-00-0001",
+        )
+
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_query_data_description(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        query_data.query_data(
+            login=self.credentials_path,
+            start_date='2010-06-01',
+            end_date='2010-05-01',
         )

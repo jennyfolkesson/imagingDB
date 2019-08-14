@@ -3,6 +3,7 @@
 import argparse
 
 import imaging_db.database.db_operations as db_ops
+import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.utils.db_utils as db_utils
 
 
@@ -82,6 +83,8 @@ def query_data(login,
         search_dict['microscope'] = microscope
     if start_date is not None:
         search_dict['start_date'] = start_date
+        if end_date is not None:
+            cli_utils.assert_date_order(start_date, end_date)
     if end_date is not None:
         search_dict['end_date'] = end_date
     if description is not None:

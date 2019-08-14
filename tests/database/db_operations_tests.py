@@ -281,7 +281,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_select(self):
         sliced_frames = self.db_inst._slice_frames(
             frames=self.frames,
-            pos=(50,),
+            positions=(50,),
             times=(5,),
             channels=(1, 2),
             slices=(1,),
@@ -308,7 +308,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_invalid_channel_tuple(self):
         self.db_inst._slice_frames(
             frames=self.frames,
-            pos=(50,),
+            positions=(50,),
             times=(5,),
             channels=(1, '2'),
             slices=(1,),
@@ -325,7 +325,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_invalid_pos(self):
         self.db_inst._slice_frames(
             frames=self.frames,
-            pos=3,
+            positions=3,
         )
 
     def test_get_meta_from_frames(self):
