@@ -3,7 +3,6 @@
 import argparse
 import os
 import pandas as pd
-import time
 
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
@@ -28,16 +27,19 @@ def parse_args():
     parser.add_argument(
         '--csv',
         type=str,
+        required=True,
         help="Full path to csv file",
     )
     parser.add_argument(
         '--login',
         type=str,
+        required=True,
         help="Full path to file containing JSON with DB login credentials",
     )
     parser.add_argument(
         '--config',
         type=str,
+        required=True,
         help="Full path to file containing JSON with upload configurations",
     )
     parser.add_argument(
@@ -57,15 +59,18 @@ def parse_args():
     return parser.parse_args()
 
 
-def upload_data_and_update_db(args):
+def upload_data_and_update_db(csv,
+                              login,
+                              config,
+                              nbr_workers=None,
+                              override=False):
     """
     Split, crop volumes and flatfield correct images in input and target
     directories. Writes output as npy files for faster reading while training.
     TODO: Add logging instead of printing
 
-    :param list args:    parsed args containing
-        login: Full path to json file containing login credentials
-        csv: Full path to csv file containing the following fields
+    :param str login: Full path to json file containing login credentials
+    :param str csv: Full path to csv file containing the following fields
         for each file to be uploaded:
             str dataset_id: Unique dataset ID <ID>-YYYY-MM-DD-HH-MM-SS-<SSSS>
             str file_name: Full path to file to be uploaded
@@ -74,26 +79,28 @@ def upload_data_and_update_db(args):
                 list positions: Which position files in folder to upload.
                 Uploads all if left empty and file_name is a folder.
                 Only valid for ome-tiff uploads.
-        config: Full path co json config file containing the fields:
+    :param str config: Full path to json config file containing the fields:
             str upload_type: Specify if the file should be split prior to upload
                 Valid options: 'frames' or 'file'
             str frames_format: Which file splitter class to use.
                 Valid options: 'ome_tiff', 'tiffolder', 'tifvideo'
             str json_meta: If slice, give full path to json metadata schema
+    :param int, None nbr_workers: Number of workers for parallel uploads
+    :param bool override: Use with caution if your upload if your upload was
+            interrupted and you want to overwrite existing data in database
+            and storage
     """
     # Assert that csv file exists and load it
-    assert os.path.isfile(args.csv), \
-        "File doesn't exist: {}".format(args.csv)
-    files_data = pd.read_csv(args.csv)
+    assert os.path.isfile(csv), \
+        "File doesn't exist: {}".format(csv)
+    files_data = pd.read_csv(csv)
 
     # Get database connection URI
-    db_connection = db_utils.get_connection_str(args.login)
-    # Make sure we can connect to the database
-    with db_ops.session_scope(db_connection) as session:
-        db_ops.test_connection(session)
+    db_connection = db_utils.get_connection_str(login)
+    db_utils.check_connection(db_connection)
     # Read and validate config json
     config_json = json_ops.read_json_file(
-        json_filename=args.config,
+        json_filename=config,
         schema_name="CONFIG_SCHEMA",
     )
     # Assert that upload type is valid
@@ -102,9 +109,9 @@ def upload_data_and_update_db(args):
         "upload_type should be 'file' or 'frames', not {}".format(
             upload_type,
         )
-    if args.nbr_workers is not None:
-        assert args.nbr_workers > 0, \
-            "Nbr of worker must be >0, not {}".format(args.nbr_workers)
+    if nbr_workers is not None:
+        assert nbr_workers > 0, \
+            "Nbr of worker must be >0, not {}".format(nbr_workers)
 
     # Make sure microscope is a string
     microscope = None
@@ -137,7 +144,7 @@ def upload_data_and_update_db(args):
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        if not args.override:
+        if not override:
             with db_ops.session_scope(db_connection) as session:
                 db_inst.assert_unique_id(session)
         # Check for parent dataset
@@ -155,9 +162,9 @@ def upload_data_and_update_db(args):
             frames_inst = splitter_class(
                 data_path=row.file_name,
                 s3_dir=s3_dir,
-                override=args.override,
+                override=override,
                 file_format=FRAME_FILE_FORMAT,
-                nbr_workers=args.nbr_workers,
+                nbr_workers=nbr_workers,
             )
             # Get kwargs if any
             kwargs = {}
@@ -196,7 +203,7 @@ def upload_data_and_update_db(args):
             data_uploader = s3_storage.DataStorage(
                 s3_dir=s3_dir,
             )
-            if not args.override:
+            if not override:
                 data_uploader.assert_unique_id()
             try:
                 data_uploader.upload_file(file_name=row.file_name)
@@ -227,6 +234,10 @@ def upload_data_and_update_db(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    t0 = time.time()
-    upload_data_and_update_db(args)
-    print("Upload time: {:.2f}".format(time.time() - t0))
+    upload_data_and_update_db(
+        csv=args.csv,
+        login=args.login,
+        config=args.config,
+        nbr_workers=args.nbr_workers,
+        override=args.override,
+    )

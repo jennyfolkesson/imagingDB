@@ -1,0 +1,35 @@
+name: imaging
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - alembic
+  - awscli
+  - boto3
+  - Cython
+  - ffmpeg
+  - jsonschema
+  - jupyter
+  - matplotlib
+  - moto
+  - natsort
+  - nose
+  - numpy
+  - opencv
+  - pandas
+  - psycopg2
+  - pydot
+  - PyYAML
+  - x264
+  - testfixtures
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - sqlalchemy
+  - tqdm
+  - zarr
+  - ipython
+  - pip
+  - pip:
+    - tifffile

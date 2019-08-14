@@ -68,6 +68,24 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
             .order_by(db_ops.Frames.file_name)
 
+        # Add some more datasets for queries
+        self.dataset_ids = [
+            'PROJECT-2010-04-01-00-00-00-0001',
+            'PROJECT-2010-05-01-00-00-00-0001',
+            'PROJECT-2010-06-01-00-00-00-0001']
+        self.descriptions = ['First dataset test', 'Second dataset', 'Third dataset']
+        self.microscopes = ['scope1', 'scope2', 'scope2']
+        # Add a few more datasets
+        for i in range(len(self.dataset_ids)):
+            new_dataset = db_ops.DataSet(
+                dataset_serial=self.dataset_ids[i],
+                description=self.descriptions[i],
+                frames=True,
+                microscope=self.microscopes[i],
+                parent_id=None,
+            )
+            self.session.add(new_dataset)
+
     def tearDown(self):
         super().tearDown()
 
@@ -77,6 +95,44 @@ class TestDBOperations(db_basetest.DBBaseTest):
     @nose.tools.raises(ConnectionError)
     def test_connection_no_session(self):
         db_ops.test_connection('session')
+
+    def test_get_datasets(self):
+        search_dict = {'project_id': 'TEST'}
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0].dataset_serial, self.dataset_serial)
+
+    def test_get_datasets_project(self):
+        search_dict = {'project_id': 'PROJECT'}
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 3)
+        for d in datasets:
+            self.assertTrue('PROJECT' in d.dataset_serial)
+
+    def test_get_datasets_scope(self):
+        search_dict = {'microscope': 'scope2'}
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 2)
+        for d in datasets:
+            self.assertEqual(d.microscope, 'scope2')
+
+    def test_get_datasets_dates(self):
+        search_dict = {
+            'start_date': '2010-04-15',
+            'end_date': '2010-05-15',
+        }
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0].dataset_serial, self.dataset_ids[1])
+
+    def test_get_datasets_description(self):
+        search_dict = {
+            'description': 'test',
+            'project_id': 'PROJECT',
+        }
+        datasets = db_ops.get_datasets(self.session, search_dict)
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0].dataset_serial, self.dataset_ids[0])
 
     @nose.tools.raises(AssertionError)
     def test_assert_unique_id(self):
@@ -188,8 +244,6 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .filter(db_ops.DataSet.dataset_serial == dataset_serial)
         self.assertEqual(datasets.count(), 1)
         dataset = datasets[0]
-        # This is the second dataset inserted
-        self.assertEqual(dataset.id, 2)
         self.assertEqual(dataset.dataset_serial, dataset_serial)
         date_time = dataset.date_time
         self.assertEqual(date_time.year, 2005)
@@ -227,7 +281,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_select(self):
         sliced_frames = self.db_inst._slice_frames(
             frames=self.frames,
-            pos=(50,),
+            positions=(50,),
             times=(5,),
             channels=(1, 2),
             slices=(1,),
@@ -254,7 +308,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_invalid_channel_tuple(self):
         self.db_inst._slice_frames(
             frames=self.frames,
-            pos=(50,),
+            positions=(50,),
             times=(5,),
             channels=(1, '2'),
             slices=(1,),
@@ -271,7 +325,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
     def test_slice_frames_invalid_pos(self):
         self.db_inst._slice_frames(
             frames=self.frames,
-            pos=3,
+            positions=3,
         )
 
     def test_get_meta_from_frames(self):

@@ -48,6 +48,7 @@ def test_validate_global_meta():
     }
     meta_utils.validate_global_meta(global_meta)
 
+
 def test_gen_sha256_numpy():
     expected_sha = 'd1b8118646637256b66ef034778f8d0add8d00436ad1ebb051ef09cf19dbf2d2'
 
@@ -87,6 +88,7 @@ def test_gen_sha256_file():
         sha = meta_utils.gen_sha256(file_path)
     nose.tools.assert_equal(expected_sha, sha)
 
+
 @nose.tools.raises(AssertionError)
 def test_validate_global_meta_invalid():
     global_meta = {
@@ -102,6 +104,7 @@ def test_validate_global_meta_invalid():
         "nbr_positions": 9,
     }
     meta_utils.validate_global_meta(global_meta)
+
 
 @nose.tools.raises(AssertionError)
 def test_validate_global_meta_missing():

@@ -20,38 +20,43 @@ def parse_args():
     parser.add_argument(
         '--id',
         type=str,
+        required=True,
         help="Unique dataset identifier",
     )
     parser.add_argument(
         '-p', '--positions',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing position indices to download",
     )
     parser.add_argument(
         '-t', '--times',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing time indices to download",
     )
     parser.add_argument(
         '-c', '--channels',
         type=str,
+        default=None,
         nargs='+',
         help="Tuple containing the channel names or indices to download",
     )
     parser.add_argument(
         '-z', '--slices',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing the z slices to download",
     )
     parser.add_argument(
         '--dest',
         type=str,
+        required=True,
         help="Main destination directory, in which a subdir named args.id "
              "\will be created",
-        required=True
     )
     parser.add_argument(
         '--metadata',
@@ -80,6 +85,7 @@ def parse_args():
     parser.add_argument(
         '--login',
         type=str,
+        required=True,
         help="Full path to file containing JSON with DB login credentials",
     )
     parser.add_argument(
@@ -92,32 +98,47 @@ def parse_args():
     return parser.parse_args()
 
 
-def download_data(args):
+def download_data(dataset_serial,
+                  login,
+                  dest,
+                  metadata=True,
+                  download=True,
+                  nbr_workers=None,
+                  positions=None,
+                  times=None,
+                  channels=None,
+                  slices=None):
     """
     Find all files associated with unique project identifier and
-    download them to local folder
+    download them to a local directory.
 
-    :param args: Command line arguments:
-        str id: Unique dataset identifier
-        str dest: Local destination directory name
-        bool metadata: Writes metadata (default True)
-            global metadata in json, local for each frame in csv
-        bool download: Downloads all files associated with dataset (default)
+    :param str dataset_serial: Unique dataset identifier
+    :param str login: Full path to json file containing database login
+            credentials
+    :param str dest: Local destination directory name
+    :param bool download: Downloads all files associated with dataset (default)
             If False, will only write csvs with metadata. Only for
             datasets split into frames
-        str login: Full path to json file containing database login
-            credentials
+    :param bool metadata: Writes metadata (default True)
+            global metadata in json, local for each frame in csv
+    :param int, None nbr_workers: Number of workers for parallel download
+            If None, it defaults to number of machine processors * 5
+    :param list, None positions: Positions (FOVs) as integers (default
+            None downloads all)
+    :param list, None times: Timepoints as integers (default None downloads all)
+    :param list, None channels: Channels as integer indices or strings for channel
+            names (default None downloads all)
+    :param list, None slices: Slice (z) integer indices (Default None downloads all)
     """
-    dataset_serial = args.id
     try:
         cli_utils.validate_id(dataset_serial)
     except AssertionError as e:
         raise AssertionError("Invalid ID:", e)
 
-    # Create output directory as a subdirectory in args.dest named
+    # Create output directory as a subdirectory in dest named
     # dataset_serial. It stops if the subdirectory already exists to avoid
     # the risk of overwriting existing data
-    dest_dir = os.path.join(args.dest, dataset_serial)
+    dest_dir = os.path.join(dest, dataset_serial)
     try:
         os.makedirs(dest_dir, exist_ok=False)
     except FileExistsError as e:
@@ -125,20 +146,17 @@ def download_data(args):
             "Folder {} already exists, {}".format(dest_dir, e))
 
     # Get database connection URI
-    db_connection = db_utils.get_connection_str(args.login)
-    # Instantiate database class
-    try:
-        db_inst = db_ops.DatabaseOperations(
-            dataset_serial=dataset_serial,
-        )
-        with db_ops.session_scope(db_connection) as session:
-            db_ops.test_connection(session)
-    except Exception as e:
-        raise IOError("Can't instantiate DB: {}".format(e))
+    db_connection = db_utils.get_connection_str(login)
+    db_utils.check_connection(db_connection)
 
-    if args.metadata is False:
+    # Instantiate database class
+    db_inst = db_ops.DatabaseOperations(
+        dataset_serial=dataset_serial,
+    )
+
+    if metadata is False:
         # Just download file(s)
-        assert args.download,\
+        assert download,\
             "You set metadata *and* download to False. You get nothing."
         with db_ops.session_scope(db_connection) as session:
             s3_dir, file_names = db_inst.get_filenames(
@@ -146,37 +164,26 @@ def download_data(args):
             )
     else:
         # Get all the slicing args and recast as tuples
-        if args.positions is None:
-            pos = 'all'
-        else:
-            pos = tuple(args.positions)
-
-        if args.times is None:
-            times = 'all'
-        else:
-            times = tuple(args.times)
-
-        if args.channels is None:
-            channels = 'all'
-        else:
+        if positions is not None:
+            positions = tuple(positions)
+        if times is not None:
+            times = tuple(times)
+        if channels is not None:
             # If channels can be converted to ints, they're indices
             try:
-                channels = [int(c) for c in args.channels]
+                channels = [int(c) for c in channels]
             except ValueError:
                 # Channels are names, not indices
-                channels = args.channels
+                channels = channels
             channels = tuple(channels)
-
-        if args.slices is None:
-            slices = 'all'
-        else:
-            slices = tuple(args.slices)
+        if slices is not None:
+            slices = tuple(slices)
 
         # Get the metadata from the requested frames
         with db_ops.session_scope(db_connection) as session:
             global_meta, frames_meta = db_inst.get_frames_meta(
                 session=session,
-                pos=pos,
+                positions=positions,
                 times=times,
                 channels=channels,
                 slices=slices,
@@ -200,18 +207,28 @@ def download_data(args):
         s3_dir = global_meta["s3_dir"]
         file_names = frames_meta["file_name"]
 
-    if args.download:
-        if args.nbr_workers is not None:
-            assert args.nbr_workers > 0,\
-                "Nbr of worker must be >0, not {}".format(args.nbr_workers)
+    if download:
+        if nbr_workers is not None:
+            assert nbr_workers > 0,\
+                "Nbr of worker must be >0, not {}".format(nbr_workers)
         data_loader = s3_storage.DataStorage(
             s3_dir=s3_dir,
-            nbr_workers=args.nbr_workers,
+            nbr_workers=nbr_workers,
         )
         data_loader.download_files(file_names, dest_dir)
 
 
 if __name__ == '__main__':
     args = parse_args()
-    download_data(args)
-
+    download_data(
+        dataset_serial=args.id,
+        login=args.login,
+        dest=args.dest,
+        metadata=args.metadata,
+        download=args.download,
+        nbr_workers=args.nbr_workers,
+        positions=args.positions,
+        times=args.times,
+        channels=args.channels,
+        slices=args.slices,
+    )

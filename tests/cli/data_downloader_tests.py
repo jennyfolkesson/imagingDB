@@ -1,4 +1,3 @@
-import argparse
 import boto3
 import cv2
 import glob
@@ -85,14 +84,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             'config_tif_id.json',
         )
         # Upload frames
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
         # Upload file
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
         self.file_s3_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
@@ -109,14 +105,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             '..',
             'config_file.json',
         )
-        args = argparse.Namespace(
+        data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            nbr_workers=None,
-            override=False,
         )
-        data_uploader.upload_data_and_update_db(args)
 
     def tearDown(self):
         """
@@ -149,25 +142,33 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.assertEqual(parsed_args.login, 'test_login.json')
             self.assertEqual(parsed_args.nbr_workers, 5)
 
+    def test_parse_args_defaults(self):
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--id', self.dataset_serial,
+                    '--dest', 'dest_path',
+                    '--login', 'test_login.json']):
+            parsed_args = data_downloader.parse_args()
+            self.assertIsNone(parsed_args.positions)
+            self.assertIsNone(parsed_args.times)
+            self.assertIsNone(parsed_args.channels)
+            self.assertIsNone(parsed_args.slices)
+            self.assertTrue(parsed_args.metadata)
+            self.assertTrue(parsed_args.download)
+            self.assertIsNone(parsed_args.nbr_workers)
+
     @patch('imaging_db.database.db_operations.session_scope')
     def test_download_frames(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial,
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
         # Images are separated by slice first then channel
         im_order = [0, 2, 4, 1, 3, 5]
         it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
@@ -222,19 +223,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial,
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
-            positions=None,
             channels='1',
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
         meta_path = os.path.join(
             dest_dir,
             self.dataset_serial,
@@ -250,19 +245,15 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial,
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=None,
-            metadata=True,
-            download=True,
             positions='0',
-            channels=None,
             times='0',
             slices='1',
         )
-        data_downloader.download_data(args)
         meta_path = os.path.join(
             dest_dir,
             self.dataset_serial,
@@ -280,19 +271,14 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial_file,
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
         # See if file has been downloaded
         file_path = os.path.join(
             dest_dir,
@@ -312,19 +298,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             os.path.join('dest_dir', self.dataset_serial_file),
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial_file,
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
             nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -333,19 +313,14 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial_file,
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
             download=False,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -357,19 +332,13 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             os.path.join('dest_dir', self.dataset_serial_file),
         )
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id='Not-a-serial',
+        data_downloader.download_data(
+            dataset_serial='Not-a-serial',
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=2,
             metadata=False,
-            download=True,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=2,
         )
-        data_downloader.download_data(args)
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -378,16 +347,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         # Create dest dir
         self.tempdir.makedir('dest_dir')
         dest_dir = os.path.join(self.temp_path, 'dest_dir')
-        args = argparse.Namespace(
-            id=self.dataset_serial_file,
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
-            nbr_workers=-2,
             metadata=False,
             download=False,
-            positions=None,
-            channels=None,
-            times=None,
-            slices=None,
+            nbr_workers=-2,
         )
-        data_downloader.download_data(args)
