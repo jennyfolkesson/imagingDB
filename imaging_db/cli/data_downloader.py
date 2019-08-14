@@ -26,24 +26,28 @@ def parse_args():
     parser.add_argument(
         '-p', '--positions',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing position indices to download",
     )
     parser.add_argument(
         '-t', '--times',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing time indices to download",
     )
     parser.add_argument(
         '-c', '--channels',
         type=str,
+        default=None,
         nargs='+',
         help="Tuple containing the channel names or indices to download",
     )
     parser.add_argument(
         '-z', '--slices',
         type=int,
+        default=None,
         nargs='+',
         help="Tuple containing the z slices to download",
     )
@@ -160,19 +164,11 @@ def download_data(dataset_serial,
             )
     else:
         # Get all the slicing args and recast as tuples
-        if positions is None:
-            pos = 'all'
-        else:
-            pos = tuple(positions)
-
-        if times is None:
-            times = 'all'
-        else:
+        if positions is not None:
+            positions = tuple(positions)
+        if times is not None:
             times = tuple(times)
-
-        if channels is None:
-            channels = 'all'
-        else:
+        if channels is not None:
             # If channels can be converted to ints, they're indices
             try:
                 channels = [int(c) for c in channels]
@@ -180,17 +176,14 @@ def download_data(dataset_serial,
                 # Channels are names, not indices
                 channels = channels
             channels = tuple(channels)
-
-        if slices is None:
-            slices = 'all'
-        else:
+        if slices is not None:
             slices = tuple(slices)
 
         # Get the metadata from the requested frames
         with db_ops.session_scope(db_connection) as session:
             global_meta, frames_meta = db_inst.get_frames_meta(
                 session=session,
-                pos=pos,
+                positions=positions,
                 times=times,
                 channels=channels,
                 slices=slices,

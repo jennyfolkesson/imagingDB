@@ -163,12 +163,12 @@ class DatabaseOperations:
         :param session: SQLAlchemy session
         :param str description: Short description of file
         :param dataframe frames_meta: Dataframe containing mandatory fields for
-            each frame
+                each frame
         :param list frames_json_meta: List of json objects with arbitrary
-            local metadata
+                local metadata
         :param dict global_meta: Required global metadata fields
         :param dict global_json_meta: Arbitrary global metadata that can be
-            converted into JSONB format
+                converted into JSONB format
         :param str microscope: microscope name
         :param str/None parent_dataset: Assign parent if not none
         """
@@ -276,15 +276,23 @@ class DatabaseOperations:
 
     def get_filenames(self,
                       session,
-                      pos='all',
-                      times='all',
-                      channels='all',
-                      slices='all'):
+                      positions=None,
+                      times=None,
+                      channels=None,
+                      slices=None):
         """
         Get S3 folder name and all file names associated with unique
         project identifier.
 
         :param session: SQLAlchemy session
+        :param [None, tuple(int)] positions: a tuple containing position indices
+                to be fetched use None to get all positions.
+        :param [None, tuple(int)] times: a tuple containing time indices
+                to be fetched use None to get all times.
+        :param [None, tuple] channels: a tuple containing channels
+                (use channel names (e.g., 'Cy3') or integer indices) to be fetched.
+        :param [None, tuple] slices: a tuple containing slice indices to
+                be fetched. Use None to get all slices.
         :return str s3_dir: Folder name containing file(s) on S3
         :return list of strs file_names: List of file names for given dataset
         """
@@ -308,9 +316,12 @@ class DatabaseOperations:
                 .filter(DataSet.dataset_serial == dataset.dataset_serial)
 
             sliced_frames = self._slice_frames(
-                all_frames, pos=pos, times=times, channels=channels,
-                slices=slices)
-
+                all_frames,
+                positions=positions,
+                times=times,
+                channels=channels,
+                slices=slices,
+            )
             s3_dir = sliced_frames[0].frames_global.s3_dir
 
             file_names = []
@@ -321,7 +332,7 @@ class DatabaseOperations:
 
     @staticmethod
     def _slice_frames(frames,
-                      pos='all',
+                      positions='all',
                       times='all',
                       channels='all',
                       slices='all'):
@@ -329,15 +340,14 @@ class DatabaseOperations:
         Get specific slices of a set of Frames
 
         :param Query frames: all of the frames to be sliced
-        :param [str, tuple(int)] pos: a tuple containing position indices
-                        to be fetched use 'all' to get all positions.
-        :param [str, tuple(int)] times: a tuple containing time indices
-                        to be fetched use 'all' to get all times.
-        :param [str, tuple] channels: a tuple containing channels
-                        (use channel names (e.g., 'Cy3') or integer indices)
-                        to be fetched.
-        :param [str, tuple] slices: a tuple containing slice indices to
-                        be fetched. Use 'all' to get all slices.
+        :param [None, tuple(int)] positions: a tuple containing position indices
+                to be fetched use None to get all positions.
+        :param [None, tuple(int)] times: a tuple containing time indices
+                to be fetched use None to get all times.
+        :param [None, tuple] channels: a tuple containing channels
+                (use channel names (e.g., 'Cy3') or integer indices) to be fetched.
+        :param [None, tuple] slices: a tuple containing slice indices to
+                be fetched. Use None to get all slices.
         :return Query sliced_frames: query that yields the requested frames
         :raises AssertionError: If illegal indices are given
         :raises ValueError: If an illegal type is given
@@ -347,7 +357,7 @@ class DatabaseOperations:
         sliced_frames = frames
 
         # Filter by channel
-        if channels == 'all':
+        if channels is None:
             pass
         elif type(channels) is tuple:
             if np.all([isinstance(c, str) for c in channels]):
@@ -367,7 +377,7 @@ class DatabaseOperations:
             raise ValueError('Invalid channel query')
 
         # Filter by slice
-        if slices == 'all':
+        if slices is None:
             pass
         elif type(slices) is tuple:
             sliced_frames = sliced_frames.filter(Frames.slice_idx.in_(slices))
@@ -375,7 +385,7 @@ class DatabaseOperations:
             raise ValueError('Invalid slice query')
 
         # Filter by time
-        if times == 'all':
+        if times is None:
             pass
         elif type(times) is tuple:
             sliced_frames = sliced_frames.filter(Frames.time_idx.in_(times))
@@ -383,10 +393,10 @@ class DatabaseOperations:
             raise ValueError('Invalid time query')
 
         # Filter by position
-        if pos == 'all':
+        if positions is None:
             pass
-        elif type(pos) is tuple:
-            sliced_frames = sliced_frames.filter(Frames.pos_idx.in_(pos))
+        elif type(positions) is tuple:
+            sliced_frames = sliced_frames.filter(Frames.pos_idx.in_(positions))
         else:
             raise ValueError('Invalid position query')
 
@@ -440,25 +450,24 @@ class DatabaseOperations:
 
     def get_frames_meta(self,
                         session,
-                        pos='all',
-                        times='all',
-                        channels='all',
-                        slices='all'):
+                        positions=None,
+                        times=None,
+                        channels=None,
+                        slices=None):
         """
         Get information for all frames in dataset associated with unique
         project identifier.
 
         :param session: SQLAlchemy session
-        :param [str, tuple] pos: a tuple containing position indices to
-                        be fetched use 'all' to get all positions.
-        :param [str, tuple] times: a tuple containing time indices to be
-                        fetched use 'all' to get all times.
-        :param [str, tuple] channels: a tuple containing channels (use
-                        channel names e.g., 'Cy3', or integer indices) to be
-                        fetched. Use 'all' to get all channels.
-        :param [str, tuple] slices: a tuple containing slice indices
-                        to be fetched use 'all' to get all channels.
-
+        :param [None, tuple] positions: a tuple containing position indices to
+                be fetched use None to get all positions.
+        :param [None, tuple] times: a tuple containing time indices to be
+                fetched use None to get all times.
+        :param [None, tuple] channels: a tuple containing channels (use channel
+                names e.g., 'Cy3', or integer indices) to befetched. Use None to
+                get all channels.
+        :param [None, tuple] slices: a tuple containing slice indices
+                to be fetched use None to get all channels.
         :return dict global_meta: Global metadata for dataset
         :return dataframe frames_meta: Metadata for each frame
         """
@@ -480,7 +489,7 @@ class DatabaseOperations:
         # Get the specified slices
         sliced_frames = self._slice_frames(
             all_frames,
-            pos=pos,
+            positions=positions,
             times=times,
             channels=channels,
             slices=slices,
