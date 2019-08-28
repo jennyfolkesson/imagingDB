@@ -34,7 +34,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         self.channel_names = []
 
         global data_uploader
-        data_uploader = s3_storage.DataStorage(
+        data_uploader = s3_storage.S3Storage(
             s3_dir=self.s3_dir,
             nbr_workers=self.nbr_workers,
         )

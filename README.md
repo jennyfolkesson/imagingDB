@@ -5,7 +5,7 @@
 
 This is a data management system intended for microscopy images. It consists of two components:
 * **File storage**, which is currently an AWS S3 bucket named 'czbiohub-imaging'. If repurposing this repo,
-make sure to change the bucket name in the DataStorage class.
+make sure to change the bucket name for the S3Storage class.
 * **A database**. We're using an AWS PostgreSQL RDS database, and SQLAchemy ORM for database
 calls using Python. 
 

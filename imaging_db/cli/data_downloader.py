@@ -211,7 +211,7 @@ def download_data(dataset_serial,
         if nbr_workers is not None:
             assert nbr_workers > 0,\
                 "Nbr of worker must be >0, not {}".format(nbr_workers)
-        data_loader = s3_storage.DataStorage(
+        data_loader = s3_storage.S3Storage(
             s3_dir=s3_dir,
             nbr_workers=nbr_workers,
         )

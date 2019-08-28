@@ -3,24 +3,28 @@ import concurrent.futures
 import numpy as np
 import os
 
+import imaging_db.filestorage.data_storage as data_storage
 import imaging_db.utils.image_utils as im_utils
 
 S3_BUCKET_NAME = "czbiohub-imaging"
 
 
-class DataStorage:
-    """Class for handling data uploads to S3"""
+class S3Storage(data_storage.DataStorage):
+    """Class for handling data uploads and downloads to S3"""
 
-    def __init__(self, s3_dir, nbr_workers=None):
+    def __init__(self, dir_name, nbr_workers=None):
         """
         Initialize S3 client and check that ID doesn't exist already
 
-        :param str s3_dir: Folder name in S3 bucket
+        :param str dir_name: Directory name in S3 bucket
         :param int nbr_workers: Number of workers for uploads/downloads
         """
+        super().__init__(dir_name,
+                         nbr_workers)
+
         self.bucket_name = S3_BUCKET_NAME
         self.s3_client = boto3.client('s3')
-        self.s3_dir = s3_dir
+        self.dir_name = dir_name
         self.nbr_workers = nbr_workers
 
     def assert_unique_id(self):
@@ -30,9 +34,9 @@ class DataStorage:
         :raise AssertionError: if folder exists
         """
         response = self.s3_client.list_objects_v2(Bucket=self.bucket_name,
-                                                  Prefix=self.s3_dir)
+                                                  Prefix=self.dir_name)
         assert response['KeyCount'] == 0, \
-            "Key already exists on S3: {}".format(self.s3_dir)
+            "Key already exists on S3: {}".format(self.dir_name)
 
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
@@ -40,7 +44,7 @@ class DataStorage:
 
         :param list of str file_names: image file names
         :param np.array im_stack: all 2D frames from file converted to stack
-        :param str file_format: file format for slices on S3
+        :param str file_format: file format for frames on S3
         """
         # Make sure number of file names matches stack shape
         assert len(file_names) == im_stack.shape[-1], \
@@ -51,7 +55,7 @@ class DataStorage:
         keys = []
         for i, file_name in enumerate(file_names):
             # Create key
-            key = "/".join([self.s3_dir, file_name])
+            key = "/".join([self.dir_name, file_name])
             # Make sure image doesn't already exist
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
@@ -91,14 +95,14 @@ class DataStorage:
 
     def upload_im(self, file_name, im, file_format='.png'):
         """
-        Upload serialized image to S3 storage after checking that key
+        Serialize then upload image to S3 storage after checking that key
         doesn't already exist.
 
         :param str file_name: File name for image
-        :param str im: 2D image
+        :param np.array im: 2D image
         :param str file_format: File format for serialization
         """
-        key = "/".join([self.s3_dir, file_name])
+        key = "/".join([self.dir_name, file_name])
         # Create new client
         s3_client = boto3.client('s3')
         # Make sure image doesn't already exist
@@ -127,7 +131,7 @@ class DataStorage:
         self.assert_unique_id()
 
         file_no_path = file_name.split("/")[-1]
-        key = "/".join([self.s3_dir, file_no_path])
+        key = "/".join([self.dir_name, file_no_path])
         self.s3_client.upload_file(
             file_name,
             self.bucket_name,
@@ -142,7 +146,7 @@ class DataStorage:
         :return np.array im: 2D image
         """
         s3_client = boto3.client('s3')
-        key = "/".join([self.s3_dir, file_name])
+        key = "/".join([self.dir_name, file_name])
         byte_str = s3_client.get_object(
             Bucket=self.bucket_name,
             Key=key,
@@ -175,8 +179,9 @@ class DataStorage:
         """
         Given global metadata, instantiate an image stack. The default order
         of frames is:
-         X Y [gray/RGB] Z C T
-         Image height, width, colors (1 or 3), the z depth, channel, timepoint
+        X Y [gray/RGB] Z C T P
+        Image height, width, colors (1 or 3), the z depth, channels,
+        timepoints, positions
 
         Retrieve all frames from local metadata and return image stack.
         Ones in stack shape indicates singleton dimensions.
@@ -192,22 +197,7 @@ class DataStorage:
             X=im_height, Y=im_width, G=[gray/RGB] (1 or 3),
             Z=slice_idx, C=channel_idx, T=time_idx, P=pos_idx
         """
-        # Metadata don't have to be indexed starting at 0 or continuous
-        unique_slices = np.unique(frames_meta["slice_idx"])
-        unique_channels = np.unique(frames_meta["channel_idx"])
-        unique_times = np.unique(frames_meta["time_idx"])
-        unique_pos = np.unique(frames_meta["pos_idx"])
-
-        stack_shape = (
-            global_meta["im_height"],
-            global_meta["im_width"],
-            global_meta["im_colors"],
-            len(unique_slices),
-            len(unique_channels),
-            len(unique_times),
-            len(unique_pos),
-        )
-        im_stack = np.zeros(stack_shape, global_meta["bit_depth"])
+        im_stack, unique_ids = self.make_stack_from_meta(global_meta, frames_meta)
 
         with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as executor:
             future_result = executor.map(self.get_im, frames_meta['file_name'])
@@ -216,25 +206,22 @@ class DataStorage:
         # Fill the image stack given dimensions
         for im_nbr, row in frames_meta.iterrows():
             im_stack[:, :, :,
-                     np.where(unique_slices == row.slice_idx)[0][0],
-                     np.where(unique_channels == row.channel_idx)[0][0],
-                     np.where(unique_times == row.time_idx)[0][0],
-                     np.where(unique_pos == row.pos_idx)[0][0],
+                     np.where(unique_ids['slices'] == row.slice_idx)[0][0],
+                     np.where(unique_ids['channels'] == row.channel_idx)[0][0],
+                     np.where(unique_ids['times'] == row.time_idx)[0][0],
+                     np.where(unique_ids['pos'] == row.pos_idx)[0][0],
             ] = np.atleast_3d(im_list[im_nbr])
         # Return squeezed stack and string that indicates dimension order
-        dim_order = "XYGZCTP"
-        single_dims = np.where(np.asarray(stack_shape) == 1)[0]
-        dim_str = ''.join(x for x in dim_order
-                          if dim_order.index(x) not in single_dims)
-        return np.squeeze(im_stack), dim_str
+        im_stack, dim_str = self.squeeze_stack(im_stack)
+        return im_stack, dim_str
 
     def download_files(self, file_names, dest_dir):
         """
-        Download files to a directory given list of file names
+        Download files from S3 directory specified in init to a directory
+        given list of file names.
 
-        :param list of str file_names: List of file names
-        :param str dest_dir: Destination directory name
-        :return:
+        :param list file_names: List of (str) file names
+        :param str dest_dir: Destination directory path
         """
         with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as ex:
             {ex.submit(self.download_file, file_name, dest_dir):
@@ -242,7 +229,7 @@ class DataStorage:
 
     def download_file(self, file_name, dest_dir):
         """
-        Download a single file to S3 without reading its contents
+        Download a single file from S3 without reading its contents.
         A new client is created to make boto3 thread safe
         https://boto3.amazonaws.com/v1/documentation/api/latest/guide/\
         resources.html#multithreading-multiprocessing
@@ -252,7 +239,7 @@ class DataStorage:
         """
         # Create a new client
         s3_client = boto3.client('s3')
-        key = "/".join([self.s3_dir, file_name])
+        key = "/".join([self.dir_name, file_name])
         dest_path = os.path.join(dest_dir, file_name)
         s3_client.download_file(
             self.bucket_name,

@@ -29,7 +29,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                          nbr_workers=nbr_workers,
                          int2str_len=int2str_len)
 
-        self.data_uploader = s3_storage.DataStorage(
+        self.data_uploader = s3_storage.S3Storage(
             s3_dir=self.s3_dir,
             nbr_workers=self.nbr_workers,
         )

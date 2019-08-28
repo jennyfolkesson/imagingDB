@@ -200,7 +200,7 @@ def upload_data_and_update_db(csv,
             # Just upload file without opening it
             assert os.path.isfile(row.file_name), \
                 "File doesn't exist: {}".format(row.file_name)
-            data_uploader = s3_storage.DataStorage(
+            data_uploader = s3_storage.S3Storage(
                 s3_dir=s3_dir,
             )
             if not override:
