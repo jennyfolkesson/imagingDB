@@ -159,7 +159,7 @@ def download_data(dataset_serial,
         assert download,\
             "You set metadata *and* download to False. You get nothing."
         with db_ops.session_scope(db_connection) as session:
-            s3_dir, file_names = db_inst.get_filenames(
+            storage_dir, file_names = db_inst.get_filenames(
                 session=session,
             )
     else:
@@ -204,7 +204,7 @@ def download_data(dataset_serial,
         )
         frames_meta.to_csv(local_meta_filename, sep=",")
         # Extract folder and file names if we want to download
-        s3_dir = global_meta["s3_dir"]
+        storage_dir = global_meta["storage_dir"]
         file_names = frames_meta["file_name"]
 
     if download:
@@ -212,7 +212,7 @@ def download_data(dataset_serial,
             assert nbr_workers > 0,\
                 "Nbr of worker must be >0, not {}".format(nbr_workers)
         data_loader = s3_storage.S3Storage(
-            s3_dir=s3_dir,
+            storage_dir=storage_dir,
             nbr_workers=nbr_workers,
         )
         data_loader.download_files(file_names, dest_dir)
