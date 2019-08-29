@@ -12,19 +12,20 @@ S3_BUCKET_NAME = "czbiohub-imaging"
 class S3Storage(data_storage.DataStorage):
     """Class for handling data uploads and downloads to S3"""
 
-    def __init__(self, dir_name, nbr_workers=None):
+    def __init__(self, storage_dir, nbr_workers=None):
         """
         Initialize S3 client and check that ID doesn't exist already
 
-        :param str dir_name: Directory name in S3 bucket
+        :param str storage_dir: Directory name in S3 bucket:
+            raw_frames or raw_files / dataset ID
         :param int nbr_workers: Number of workers for uploads/downloads
         """
-        super().__init__(dir_name,
+        super().__init__(storage_dir,
                          nbr_workers)
 
         self.bucket_name = S3_BUCKET_NAME
         self.s3_client = boto3.client('s3')
-        self.dir_name = dir_name
+        self.storage_dir = storage_dir
         self.nbr_workers = nbr_workers
 
     def assert_unique_id(self):
@@ -34,9 +35,9 @@ class S3Storage(data_storage.DataStorage):
         :raise AssertionError: if folder exists
         """
         response = self.s3_client.list_objects_v2(Bucket=self.bucket_name,
-                                                  Prefix=self.dir_name)
+                                                  Prefix=self.storage_dir)
         assert response['KeyCount'] == 0, \
-            "Key already exists on S3: {}".format(self.dir_name)
+            "Key already exists on S3: {}".format(self.storage_dir)
 
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
@@ -55,7 +56,7 @@ class S3Storage(data_storage.DataStorage):
         keys = []
         for i, file_name in enumerate(file_names):
             # Create key
-            key = "/".join([self.dir_name, file_name])
+            key = "/".join([self.storage_dir, file_name])
             # Make sure image doesn't already exist
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
@@ -102,7 +103,7 @@ class S3Storage(data_storage.DataStorage):
         :param np.array im: 2D image
         :param str file_format: File format for serialization
         """
-        key = "/".join([self.dir_name, file_name])
+        key = "/".join([self.storage_dir, file_name])
         # Create new client
         s3_client = boto3.client('s3')
         # Make sure image doesn't already exist
@@ -131,7 +132,7 @@ class S3Storage(data_storage.DataStorage):
         self.assert_unique_id()
 
         file_no_path = file_name.split("/")[-1]
-        key = "/".join([self.dir_name, file_no_path])
+        key = "/".join([self.storage_dir, file_no_path])
         self.s3_client.upload_file(
             file_name,
             self.bucket_name,
@@ -146,7 +147,7 @@ class S3Storage(data_storage.DataStorage):
         :return np.array im: 2D image
         """
         s3_client = boto3.client('s3')
-        key = "/".join([self.dir_name, file_name])
+        key = "/".join([self.storage_dir, file_name])
         byte_str = s3_client.get_object(
             Bucket=self.bucket_name,
             Key=key,
@@ -239,7 +240,7 @@ class S3Storage(data_storage.DataStorage):
         """
         # Create a new client
         s3_client = boto3.client('s3')
-        key = "/".join([self.dir_name, file_name])
+        key = "/".join([self.storage_dir, file_name])
         dest_path = os.path.join(dest_dir, file_name)
         s3_client.download_file(
             self.bucket_name,

@@ -16,7 +16,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
 
         self.dataset_serial = 'TEST-2005-10-09-20-00-00-0001'
         self.global_meta = {
-            "s3_dir": "dir_name",
+            "storage_dir": "dir_name",
             "nbr_frames": 6,
             "im_height": 256,
             "im_width": 512,
@@ -30,7 +30,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
         self.global_json_meta = {'status': 'test'}
         self.microscope = 'test_microscope'
         self.description = 'This is a test'
-        self.s3_dir = 'testing/TEST-2005-10-09-20-00-00-0001'
+        self.storage_dir = 'testing/TEST-2005-10-09-20-00-00-0001'
         self.sha256 = 'aaabbbccc'
 
         self.frames_meta = meta_utils.make_dataframe(6)
@@ -185,7 +185,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
         self.assertEqual(
             global_query[0].s3_dir,
-            self.global_meta['s3_dir'],
+            self.global_meta['storage_dir'],
         )
         self.assertEqual(
             global_query[0].nbr_frames,
@@ -233,7 +233,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
         db_inst.insert_file(
             session=self.session,
             description=self.description,
-            s3_dir=self.s3_dir,
+            storage_dir=self.storage_dir,
             file_name=file_name,
             global_json_meta=self.global_json_meta,
             microscope=self.microscope,
@@ -256,16 +256,16 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == dataset_serial) \
             .one()
-        self.assertEqual(file_global.s3_dir, self.s3_dir)
+        self.assertEqual(file_global.s3_dir, self.storage_dir)
         self.assertEqual(file_global.file_name, file_name)
         self.assertDictEqual(file_global.metadata_json, self.global_json_meta)
         self.assertEqual(file_global.sha256, self.sha256)
 
     def test_get_filenames(self):
-        s3_dir, file_names = self.db_inst.get_filenames(
+        storage_dir, file_names = self.db_inst.get_filenames(
             session=self.session,
         )
-        self.assertEqual(s3_dir, self.global_meta['s3_dir'])
+        self.assertEqual(storage_dir, self.global_meta['storage_dir'])
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
             self.assertEqual(file_names[i], im_name)

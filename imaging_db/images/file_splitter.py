@@ -9,21 +9,21 @@ class FileSplitter(metaclass=ABCMeta):
 
     def __init__(self,
                  data_path,
-                 s3_dir,
+                 storage_dir,
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
         """
         :param str data_path: Full path to file or directory name
-        :param str s3_dir: Folder name on S3 where data will be stored
+        :param str storage_dir: Directory where data will be stored
         :param bool override: Will not continue DataStorage if dataset is already
          present on S3.
         :param str file_format: Image file format (preferred is png)
         :param int int2str_len: How many integers will be added to each index
         """
         self.data_path = data_path
-        self.s3_dir = s3_dir
+        self.storage_dir = storage_dir
         self.override = override
         self.file_format = file_format
         self.nbr_workers = nbr_workers
@@ -122,7 +122,7 @@ class FileSplitter(metaclass=ABCMeta):
             "Frame shape is empty"
 
         self.global_meta = {
-            "s3_dir": self.s3_dir,
+            "storage_dir": self.storage_dir,
             "nbr_frames": nbr_frames,
             "im_height": self.frame_shape[0],
             "im_width": self.frame_shape[1],

@@ -18,14 +18,14 @@ class TifFolderSplitter(file_splitter.FileSplitter):
     """
     def __init__(self,
                  data_path,
-                 s3_dir,
+                 storage_dir,
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
         
         super().__init__(data_path,
-                         s3_dir,
+                         storage_dir,
                          override=override,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
@@ -35,7 +35,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
 
         global data_uploader
         data_uploader = s3_storage.S3Storage(
-            s3_dir=self.s3_dir,
+            storage_dir=self.storage_dir,
             nbr_workers=self.nbr_workers,
         )
         if not override:

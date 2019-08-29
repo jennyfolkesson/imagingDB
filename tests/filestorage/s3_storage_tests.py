@@ -19,7 +19,7 @@ class TestS3Storage(unittest.TestCase):
         """
         Set up temporary test directory and mock S3 bucket connection
         """
-        self.s3_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.storage_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -52,10 +52,10 @@ class TestS3Storage(unittest.TestCase):
         self.mock.stop()
 
     def test_upload_file(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.upload_file(file_name=self.file_path)
         # Make sure the image uploaded in setUp is unchanged
-        key = "/".join([self.s3_dir, self.im_name])
+        key = "/".join([self.storage_dir, self.im_name])
         byte_string = self.conn.Object(self.bucket_name,
                                   key).get()['Body'].read()
         # Construct an array from the bytes and decode image
@@ -66,12 +66,12 @@ class TestS3Storage(unittest.TestCase):
 
     def test_upload_frames(self):
         # Upload image stack
-        s3_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
-        data_storage = s3_storage.S3Storage(s3_dir, self.nbr_workers)
+        storage_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
+        data_storage = s3_storage.S3Storage(storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, self.im_stack)
         # Get images from uploaded stack and validate that the contents are unchanged
         for im_nbr in range(len(self.stack_names)):
-            key = "/".join([s3_dir, self.stack_names[im_nbr]])
+            key = "/".join([storage_dir, self.stack_names[im_nbr]])
             byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image
             im = im_utils.deserialize_im(byte_string)
@@ -88,12 +88,12 @@ class TestS3Storage(unittest.TestCase):
         # Expected color image shape
         expected_shape = im_stack[..., 0].shape
         # Mock frame upload
-        s3_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
-        data_storage = s3_storage.S3Storage(s3_dir, self.nbr_workers)
+        storage_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
+        data_storage = s3_storage.S3Storage(storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, im_stack)
         # Get images and validate that the contents are unchanged
         for im_nbr in range(len(self.stack_names)):
-            key = "/".join([s3_dir, self.stack_names[im_nbr]])
+            key = "/".join([storage_dir, self.stack_names[im_nbr]])
             byte_string = self.conn.Object(self.bucket_name,
                                            key).get()['Body'].read()
             # Construct an array from the bytes and decode image
@@ -104,23 +104,23 @@ class TestS3Storage(unittest.TestCase):
             numpy.testing.assert_array_equal(im, im_stack[..., im_nbr])
 
     def test_upload_serialized(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
-        key = "/".join([self.s3_dir, self.im_name])
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        key = "/".join([self.storage_dir, self.im_name])
         key_byte_tuple = (key, self.im_encoded)
         data_storage.upload_serialized(key_byte_tuple)
         byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
         nose.tools.assert_equal(byte_string, self.im_encoded)
 
     def test_upload_im(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
-        key = "/".join([self.s3_dir, self.im_name])
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        key = "/".join([self.storage_dir, self.im_name])
         data_storage.upload_im(self.im_name, self.im)
         byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
         im = im_utils.deserialize_im(byte_string)
         numpy.testing.assert_array_equal(im, self.im)
 
     def test_upload_file_get_im(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.upload_file(file_name=self.file_path)
         # Load the temporary image
         im_out = data_storage.get_im(file_name=self.im_name)
@@ -129,7 +129,7 @@ class TestS3Storage(unittest.TestCase):
         numpy.testing.assert_array_equal(im_out, self.im)
 
     def test_get_stack(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, self.im_stack)
         # Load image stack in memory
         stack_shape = (10, 15, 1, 2)
@@ -146,11 +146,11 @@ class TestS3Storage(unittest.TestCase):
 
     def test_get_stack_from_meta(self):
         # Upload image stack
-        s3_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
-        data_storage = s3_storage.S3Storage(s3_dir, self.nbr_workers)
+        storage_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
+        data_storage = s3_storage.S3Storage(storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, self.im_stack)
         global_meta = {
-            "s3_dir": s3_dir,
+            "storage_dir": storage_dir,
             "nbr_frames": 2,
             "im_height": 10,
             "im_width": 15,
@@ -183,8 +183,8 @@ class TestS3Storage(unittest.TestCase):
         nose.tools.assert_equal(dim_order, "XYC")
 
     def test_download_files(self):
-        s3_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
-        data_storage = s3_storage.S3Storage(s3_dir, self.nbr_workers)
+        storage_dir = "raw_frames/ML-2005-05-23-10-00-00-0001"
+        data_storage = s3_storage.S3Storage(storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, self.im_stack)
         data_storage.download_files(
             file_names=self.stack_names,
@@ -199,7 +199,7 @@ class TestS3Storage(unittest.TestCase):
             numpy.testing.assert_array_equal(im_out, self.im_stack[..., i])
 
     def test_download_file(self):
-        data_storage = s3_storage.S3Storage(self.s3_dir, self.nbr_workers)
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.upload_file(file_name=self.file_path)
         # Download the temporary image then read it and validate
         data_storage.download_file(

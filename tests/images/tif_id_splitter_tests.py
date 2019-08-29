@@ -23,7 +23,7 @@ class TestTifIDSplitter(unittest.TestCase):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock S3 dir
-        self.s3_dir = "raw_frames/ML-2005-06-09-20-00-00-1000"
+        self.storage_dir = "raw_frames/ML-2005-06-09-20-00-00-1000"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -50,7 +50,7 @@ class TestTifIDSplitter(unittest.TestCase):
         # Instantiate file parser class
         self.frames_inst = tif_id_splitter.TifIDSplitter(
             data_path=self.file_path,
-            s3_dir="raw_frames/ML-2005-06-09-20-00-00-1000",
+            storage_dir="raw_frames/ML-2005-06-09-20-00-00-1000",
             override=False,
             file_format=".png",
         )
@@ -124,7 +124,7 @@ class TestTifIDSplitter(unittest.TestCase):
         ]
         # Download uploaded data and compare to im
         for i, im_name in enumerate(im_names):
-            key = "/".join([self.s3_dir, im_name])
+            key = "/".join([self.storage_dir, im_name])
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image

@@ -136,9 +136,9 @@ def upload_data_and_update_db(csv,
 
         # Get S3 directory based on upload type
         if upload_type == "frames":
-            s3_dir = "/".join([FRAME_FOLDER_NAME, dataset_serial])
+            storage_dir = "/".join([FRAME_FOLDER_NAME, dataset_serial])
         else:
-            s3_dir = "/".join([FILE_FOLDER_NAME, dataset_serial])
+            storage_dir = "/".join([FILE_FOLDER_NAME, dataset_serial])
         # Instantiate database operations class
         db_inst = db_ops.DatabaseOperations(
             dataset_serial=dataset_serial,
@@ -161,7 +161,7 @@ def upload_data_and_update_db(csv,
             # Instantiate splitter class
             frames_inst = splitter_class(
                 data_path=row.file_name,
-                s3_dir=s3_dir,
+                storage_dir=storage_dir,
                 override=override,
                 file_format=FRAME_FILE_FORMAT,
                 nbr_workers=nbr_workers,
@@ -201,7 +201,7 @@ def upload_data_and_update_db(csv,
             assert os.path.isfile(row.file_name), \
                 "File doesn't exist: {}".format(row.file_name)
             data_uploader = s3_storage.S3Storage(
-                s3_dir=s3_dir,
+                storage_dir=storage_dir,
             )
             if not override:
                 data_uploader.assert_unique_id()
@@ -220,7 +220,7 @@ def upload_data_and_update_db(csv,
                     db_inst.insert_file(
                         session=session,
                         description=description,
-                        s3_dir=s3_dir,
+                        storage_dir=storage_dir,
                         file_name=file_name,
                         global_json_meta=global_json,
                         microscope=microscope,

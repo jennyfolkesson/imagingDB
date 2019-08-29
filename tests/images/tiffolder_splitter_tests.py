@@ -41,7 +41,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Magic mocking of multiprocessing
         MockPoolExecutor().__enter__().map = map_mock
         # Mock S3 directory for upload
-        self.s3_dir = "raw_frames/SMS-2010-01-01-00-00-00-0001"
+        self.storage_dir = "raw_frames/SMS-2010-01-01-00-00-00-0001"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -82,7 +82,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Instantiate file parser class
         self.frames_inst = tif_splitter.TifFolderSplitter(
             data_path=self.temp_path,
-            s3_dir=self.s3_dir,
+            storage_dir=self.storage_dir,
             override=False,
             file_format=".png",
         )
@@ -194,7 +194,7 @@ class TestTifFolderSplitter(unittest.TestCase):
         # Download uploaded data and compare to self.im
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t000_p050.png'.format(c, z)
-            key = "/".join([self.s3_dir, im_name])
+            key = "/".join([self.storage_dir, im_name])
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image

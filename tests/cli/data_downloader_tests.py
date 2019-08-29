@@ -38,7 +38,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock S3 dir
-        self.frames_s3_dir = "raw_frames/FRAMES-2005-06-09-20-00-00-1000"
+        self.frames_storage_dir = "raw_frames/FRAMES-2005-06-09-20-00-00-1000"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -91,7 +91,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         )
         # Upload file
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
-        self.file_s3_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
+        self.file_storage_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
         self.csv_path_file = os.path.join(
             self.temp_path,
             "test_upload_file.csv",
@@ -206,7 +206,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             'global_metadata.json',
         )
         meta_json = json_ops.read_json_file(meta_path)
-        self.assertEqual(meta_json['s3_dir'], self.frames_s3_dir)
+        self.assertEqual(meta_json['storage_dir'], self.frames_storage_dir)
         self.assertEqual(meta_json['nbr_frames'], 6)
         self.assertEqual(meta_json['im_width'], 15)
         self.assertEqual(meta_json['im_height'], 10)

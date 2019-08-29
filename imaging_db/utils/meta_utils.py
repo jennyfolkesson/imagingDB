@@ -49,7 +49,7 @@ def validate_global_meta(global_meta):
     :param dict global_meta: Global frames metadata
     :raise AssertionError: if not all keys are present
     """
-    keys = ["s3_dir",
+    keys = ["storage_dir",
             "nbr_frames",
             "im_width",
             "im_height",

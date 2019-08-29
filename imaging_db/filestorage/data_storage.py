@@ -5,7 +5,7 @@ import numpy as np
 class DataStorage(metaclass=ABCMeta):
     """Abstract class with required functions for all data transfers"""
 
-    def __init__(self, dir_name, nbr_workers=None):
+    def __init__(self, storage_dir, nbr_workers=None):
         """
         Initialize abstract class. Main directories for both S3 and local
         storage are
@@ -15,10 +15,10 @@ class DataStorage(metaclass=ABCMeta):
         raw_files: For files that have not been separated into frames + metadata.
             They're copied to storage as is.
 
-        :param str dir_name: Directory name (dataset ID) in raw_frames or raw_files
+        :param str storage_dir: Directory name (dataset ID) in raw_frames or raw_files
         :param int nbr_workers: Number of workers for uploads/downloads
         """
-        self.dir_name = dir_name
+        self.storage_dir = storage_dir
         self.nbr_workers = nbr_workers
 
     @staticmethod

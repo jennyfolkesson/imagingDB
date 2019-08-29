@@ -47,7 +47,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
         self.time_idx = 3
         self.channel_name = "TESTCHANNEL"
         # Mock S3 dir
-        self.s3_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.storage_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -82,7 +82,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
         # Instantiate file parser class
         self.frames_inst = ometif_splitter.OmeTiffSplitter(
             data_path=self.temp_path,
-            s3_dir="raw_frames/ISP-2005-06-09-20-00-00-0001",
+            storage_dir="raw_frames/ISP-2005-06-09-20-00-00-0001",
             override=False,
             file_format=".png",
         )
@@ -113,7 +113,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
         ]
         # Download uploaded data and compare to im
         for im_name in im_names:
-            key = "/".join([self.s3_dir, im_name])
+            key = "/".join([self.storage_dir, im_name])
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image
@@ -213,7 +213,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
                         )
         frames_inst = ometif_splitter.OmeTiffSplitter(
             data_path=file_path_col,
-            s3_dir="raw_frames/ISP-2005-06-09-20-00-00-0002",
+            storage_dir="raw_frames/ISP-2005-06-09-20-00-00-0002",
             override=False,
             file_format=".png",
         )

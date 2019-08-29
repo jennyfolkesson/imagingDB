@@ -15,15 +15,15 @@ class TestFileSplitter(unittest.TestCase):
     def setUp(self):
         # Start mock instance
         self.test_path = "/datapath/testfile.tif"
-        self.s3_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.storage_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
         self.mock_inst = file_splitter.FileSplitter(
             data_path=self.test_path,
-            s3_dir=self.s3_dir,
+            storage_dir=self.storage_dir,
         )
 
     def test_init(self):
         nose.tools.assert_equal(self.mock_inst.data_path, self.test_path)
-        nose.tools.assert_equal(self.mock_inst.s3_dir, self.s3_dir)
+        nose.tools.assert_equal(self.mock_inst.storage_dir, self.storage_dir)
         nose.tools.assert_equal(self.mock_inst.int2str_len, 3)
         nose.tools.assert_equal(self.mock_inst.file_format, '.png')
 
@@ -79,7 +79,7 @@ class TestFileSplitter(unittest.TestCase):
         self.mock_inst.set_global_meta(nbr_frames=nbr_frames)
         # Assert contents
         meta = self.mock_inst.get_global_meta()
-        nose.tools.assert_equal(meta['s3_dir'], self.s3_dir)
+        nose.tools.assert_equal(meta['storage_dir'], self.storage_dir)
         nose.tools.assert_equal(meta['nbr_frames'], nbr_frames)
         nose.tools.assert_equal(meta['im_height'], test_shape[0])
         nose.tools.assert_equal(meta['im_width'], test_shape[1])
