@@ -33,9 +33,9 @@ class TestDataStorage(unittest.TestCase):
             meta_row['sha256'] = 'AAAABBBB'
             meta_row['file_name'] = self._get_imname(meta_row)
             self.frames_meta = self.frames_meta.append(meta_row, ignore_index=True)
-        print(self.frames_meta)
-        self.im_height = 100
-        self.im_width = 200
+
+        self.im_height = 10
+        self.im_width = 20
         self.im_colors = 1
         self.global_meta = {
             "storage_dir": 'storage_dir_path',
@@ -49,7 +49,6 @@ class TestDataStorage(unittest.TestCase):
             "nbr_timepoints": len(np.unique(self.frames_meta["time_idx"])),
             "nbr_positions": len(np.unique(self.frames_meta["pos_idx"])),
         }
-        print(self.global_meta)
         self.storage_inst = data_storage.DataStorage('test_storage', 12)
 
     def _get_imname(self, meta_row, file_format='.png', int2str_len=3):
@@ -94,17 +93,17 @@ class TestDataStorage(unittest.TestCase):
         self.assertListEqual(unique_ids['pos'].tolist(), self.pos_ids)
 
     def test_squeeze_stack(self):
-        im_stack = np.zeros((100, 200, 1, 10, 20, 1, 30))
+        im_stack = np.zeros((10, 20, 1, 10, 20, 1, 30))
         im_stack, dim_str = self.storage_inst.squeeze_stack(im_stack)
         # Singleton dimensions should be removed
-        self.assertTupleEqual(im_stack.shape, (100, 200, 10, 20, 30))
+        self.assertTupleEqual(im_stack.shape, (10, 20, 10, 20, 30))
         # Singleton dims were G and T, so remaining should be XYZCP
         self.assertEqual(dim_str, 'XYZCP')
 
     def test_squeeze_stack_no_singleton(self):
-        im_stack = np.zeros((100, 200, 3, 10, 20, 40, 30))
+        im_stack = np.zeros((10, 20, 3, 10, 20, 40, 30))
         im_stack, dim_str = self.storage_inst.squeeze_stack(im_stack)
-        self.assertTupleEqual(im_stack.shape, (100, 200, 3, 10, 20, 40, 30))
+        self.assertTupleEqual(im_stack.shape, (10, 20, 3, 10, 20, 40, 30))
         self.assertEqual(dim_str, 'XYGZCTP')
 
     @nose.tools.raises(NotImplementedError)
