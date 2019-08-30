@@ -22,7 +22,7 @@ DF_NAMES = ["channel_idx",
             "sha256"]
 
 
-def make_dataframe(nbr_frames, col_names=DF_NAMES):
+def make_dataframe(nbr_frames=None, col_names=DF_NAMES):
     """
     Create empty pandas dataframe given indices and column names
 

@@ -180,7 +180,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                 positions=positions,
                 glob_paths=file_paths,
             )
-        self.frames_meta = meta_utils.make_dataframe(nbr_frames=None)
+        self.frames_meta = meta_utils.make_dataframe()
         self.frames_json = []
 
         pos_prog_bar = tqdm(file_paths, desc='Position')

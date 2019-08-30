@@ -28,7 +28,7 @@ def test_make_empty_dataframe():
         "file_name",
         "pos_idx",
         "sha256"]
-    frames_meta = meta_utils.make_dataframe(nbr_frames=None)
+    frames_meta = meta_utils.make_dataframe()
     nose.tools.assert_equal(expected_names, list(frames_meta))
     nose.tools.assert_true(frames_meta.empty)
 

@@ -85,7 +85,7 @@ class DataStorage(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def upload_frames(self,file_names, im_stack, file_format=".png"):
+    def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
         Uploads all frames to storage using threading or multiprocessing
 
