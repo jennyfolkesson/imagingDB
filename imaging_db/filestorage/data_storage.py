@@ -1,6 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
+STORAGE_MOUNT_POINT = '/Volumes/data_lg/czbiohub-imaging/'
+S3_BUCKET_NAME = "czbiohub-imaging"
+
 
 class DataStorage(metaclass=ABCMeta):
     """Abstract class with required functions for all data transfers"""
