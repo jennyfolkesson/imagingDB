@@ -114,7 +114,7 @@ class TestS3Storage(unittest.TestCase):
     def test_upload_im(self):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         key = "/".join([self.storage_dir, self.im_name])
-        data_storage.upload_im(self.im_name, self.im)
+        data_storage.upload_im(im_name=self.im_name, im=self.im)
         byte_string = self.conn.Object(self.bucket_name, key).get()['Body'].read()
         im = im_utils.deserialize_im(byte_string)
         numpy.testing.assert_array_equal(im, self.im)

@@ -87,7 +87,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         :return str sha256: Checksum for image
         :return dict dict_i: JSON metadata for frame
         """
-        frame_path, file_name = frame_file_tuple
+        frame_path, frame_name = frame_file_tuple
         im = tifffile.TiffFile(frame_path)
         tiftags = im.pages[0].tags
         # Get all frame specific metadata
@@ -99,7 +99,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         sha256 = meta_utils.gen_sha256(im)
         # Upload to S3 with global client
         data_uploader.upload_im(
-            file_name=file_name,
+            im_name=frame_name,
             im=im,
             file_format=self.file_format,
         )

@@ -110,12 +110,12 @@ class DataStorage(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def upload_im(self, file_name, im, file_format='.png'):
+    def upload_im(self, im_name, im, file_format='.png'):
         """
         Save image to storage after checking that the path to file doesn't
         already exist in storage.
 
-        :param str file_name: File name for image
+        :param str im_name: File name for image
         :param np.array im: 2D image
         :param str file_format: File format for writing image
         """
