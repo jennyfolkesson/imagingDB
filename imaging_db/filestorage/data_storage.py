@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import concurrent.futures
 import numpy as np
 
 STORAGE_MOUNT_POINT = '/Volumes/data_lg/czbiohub-imaging/'
@@ -88,6 +89,16 @@ class DataStorage(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
+    def nonexistent_storage_path(self, storage_path):
+        """
+        Checks that a given path to a file in storage doesn't already exist.
+
+        :param str storage_path: Path in local or S3 storage
+        :return bool: True if file doesn't exist in storage, False otherwise
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
         Uploads all frames to storage using threading or multiprocessing
@@ -131,7 +142,6 @@ class DataStorage(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_stack(self, file_names, stack_shape, bit_depth):
         """
         Given file names and a 3D stack shape, this will fetch corresponding
@@ -145,9 +155,21 @@ class DataStorage(metaclass=ABCMeta):
         :param dtype bit_depth: Bit depth
         :return np.array im_stack: Stack of 2D images
         """
-        raise NotImplementedError
+        assert len(stack_shape) > 2, "Stack shape must be 3D"
+        im_stack = np.zeros(stack_shape, dtype=bit_depth)
 
-    @abstractmethod
+        with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as executor:
+            pool_result = executor.map(self.get_im, file_names)
+
+        has_color_dim = True
+        if stack_shape[2] > 1:
+            has_color_dim = False
+        for im_nbr, im in enumerate(pool_result):
+            if has_color_dim:
+                im = np.atleast_3d(im)
+            im_stack[..., im_nbr] = im
+        return im_stack
+
     def get_stack_from_meta(self, global_meta, frames_meta):
         """
         Given global metadata, instantiate an image stack. The default order
@@ -174,9 +196,24 @@ class DataStorage(metaclass=ABCMeta):
             X=im_height, Y=im_width, G=[gray/RGB] (1 or 3),
             Z=slice_idx, C=channel_idx, T=time_idx, P=pos_idx
         """
-        raise NotImplementedError
+        im_stack, unique_ids = self.make_stack_from_meta(global_meta, frames_meta)
 
-    @abstractmethod
+        with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as executor:
+            pool_result = executor.map(self.get_im, frames_meta['file_name'])
+
+        im_list = list(pool_result)
+        # Fill the image stack given dimensions
+        for im_nbr, row in frames_meta.iterrows():
+            im_stack[:, :, :,
+                     np.where(unique_ids['slices'] == row.slice_idx)[0][0],
+                     np.where(unique_ids['channels'] == row.channel_idx)[0][0],
+                     np.where(unique_ids['times'] == row.time_idx)[0][0],
+                     np.where(unique_ids['pos'] == row.pos_idx)[0][0],
+            ] = np.atleast_3d(im_list[im_nbr])
+        # Return squeezed stack and string that indicates dimension order
+        im_stack, dim_str = self.squeeze_stack(im_stack)
+        return im_stack, dim_str
+
     def download_files(self, file_names, dest_dir):
         """
         Download files from storage directory specified in init to a
@@ -185,7 +222,9 @@ class DataStorage(metaclass=ABCMeta):
         :param list file_names: List of (str) file names
         :param str dest_dir: Destination directory path
         """
-        raise NotImplementedError
+        with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as ex:
+            {ex.submit(self.download_file, file_name, dest_dir):
+                 file_name for file_name in file_names}
 
     @abstractmethod
     def download_file(self, file_name, dest_dir):

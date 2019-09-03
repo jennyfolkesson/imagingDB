@@ -53,11 +53,18 @@ class LocalStorage(data_storage.DataStorage):
         assert os.path.exists(dir_path) is False,\
             "ID {} already exists in storage".format(dir_path)
 
+    def nonexistent_storage_path(self, storage_path):
+        dir_path = os.path.join(self.mount_point, storage_path)
+        if not os.path.exists(dir_path):
+            return True
+        else:
+            return False
+
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
         Writes all frames to storage using threading or multiprocessing
 
-        :param list file_names: Image file names (str)
+        :param list file_names: Image file names (str), with extension, no path
         :param np.array im_stack: all 2D frames from file converted to stack
         :param str file_format: file format for frames to be written in storage
         """
@@ -76,28 +83,35 @@ class LocalStorage(data_storage.DataStorage):
             path_im_tuples.append((path_i, im_stack[..., i]))
 
         with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
-            res = ex.map(self.upload_im_tuple, path_im_tuples)
+            ex.map(self.upload_im_tuple, path_im_tuples)
 
     def upload_im_tuple(self, path_im_tuple):
         """
         Save image to storage after checking that the path to file doesn't
         already exist in storage.
 
-        :param tuple file_name: (File name str and image np.array)
+        :param tuple path_im_tuple: (File name str and image np.array)
         """
-        (file_name, im) = path_im_tuple
-        cv2.imwrite(file_name, im)
+        (im_path, im) = path_im_tuple
+        if self.nonexistent_storage_path(im_path):
+            cv2.imwrite(im_path, im)
+        else:
+            print("File {} already exists.".format(im_path))
 
-    def upload_im(self, file_name, im, file_format='.png'):
+    def upload_im(self, im_name, im, file_format='.png'):
         """
         Save image to storage after checking that the path to file doesn't
         already exist in storage.
 
-        :param str file_name: File name for image
+        :param str im_name: File name for image, with extension, no path
         :param np.array im: 2D image
         :param str file_format: File format for writing image
         """
-        cv2.imwrite(file_name, im)
+        im_path = os.path.join(self.mount_point, self.storage_dir, im_name)
+        if self.nonexistent_storage_path(im_path):
+            cv2.imwrite(im_path, im)
+        else:
+            print("File {} already exists.".format(im_path))
 
     def upload_file(self, file_name):
         """
@@ -125,60 +139,9 @@ class LocalStorage(data_storage.DataStorage):
         :param str file_name: File name of 2D image (frame)
         :return np.array im: 2D image
         """
-        raise NotImplementedError
-
-    def get_stack(self, file_names, stack_shape, bit_depth):
-        """
-        Given file names and a 3D stack shape, this will fetch corresponding
-        images, attempt to fit them into the stack and return image stack.
-        This function assumes that the frames in the list are contiguous,
-        i.e. the length of the file name will be the last dimension of
-        the image stack.
-
-        :param list of str file_names: Frame file names
-        :param tuple stack_shape: Shape of image stack
-        :param dtype bit_depth: Bit depth
-        :return np.array im_stack: Stack of 2D images
-        """
-        raise NotImplementedError
-
-    def get_stack_from_meta(self, global_meta, frames_meta):
-        """
-        Given global metadata, instantiate an image stack. The default order
-        of frames is:
-        X Y [gray/RGB] Z C T P
-        X: Image height
-        Y: Image width
-        G: Grayscale or RGB (1 or 3 dims)
-        Z: The slice (z) depth
-        C: Channel index
-        T: Timepoint index
-        P: Position (FOV) index
-
-        Retrieve all frames from local metadata and return image stack.
-        Ones in stack shape indicates singleton dimensions.
-        The stack is then squeezed to remove singleton dimensions, and a string
-        is returned to indicate which dimensions are kept and in what order.
-
-        :param dict global_meta: Global metadata for dataset
-        :param dataframe frames_meta: Local metadata and paths for each file
-        :return np.array im_stack: Stack of 2D images with dimensions given below
-        :return str dim_str: String indicating order of stack dimensions
-            Possible values: XYGZCTP
-            X=im_height, Y=im_width, G=[gray/RGB] (1 or 3),
-            Z=slice_idx, C=channel_idx, T=time_idx, P=pos_idx
-        """
-        raise NotImplementedError
-
-    def download_files(self, file_names, dest_dir):
-        """
-        Download files from storage directory specified in init to a
-        local directory given list of file names in storage directory.
-
-        :param list file_names: List of (str) file names
-        :param str dest_dir: Destination directory path
-        """
-        raise NotImplementedError
+        im_path = os.path.join(self.mount_point, self.storage_dir, file_name)
+        im = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
+        return im
 
     def download_file(self, file_name, dest_dir):
         """
@@ -188,4 +151,10 @@ class LocalStorage(data_storage.DataStorage):
         :param str file_name: File name
         :param str dest_dir: Destination directory name
         """
-        raise NotImplementedError
+        storage_path = os.path.join(
+            self.mount_point,
+            self.storage_dir,
+            file_name,
+        )
+        dest_path = os.path.join(dest_dir, file_name)
+        shutil.copy(storage_path, dest_path)

@@ -193,8 +193,10 @@ class TestS3Storage(unittest.TestCase):
         # Read downloaded file and assert that contents are the same
         for i, im_name in enumerate(self.stack_names):
             dest_path = os.path.join(self.temp_path, im_name)
-            im_out = cv2.imread(dest_path,
-                                cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+            im_out = cv2.imread(
+                dest_path,
+                cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
+            )
             nose.tools.assert_equal(im_out.dtype, np.uint16)
             numpy.testing.assert_array_equal(im_out, self.im_stack[..., i])
 

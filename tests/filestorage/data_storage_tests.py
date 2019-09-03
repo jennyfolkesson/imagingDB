@@ -111,6 +111,10 @@ class TestDataStorage(unittest.TestCase):
         self.storage_inst.assert_unique_id()
 
     @nose.tools.raises(NotImplementedError)
+    def test_nonexistent_storage_path(self):
+        self.storage_inst.nonexistent_storage_path('/raw_frames/im.png')
+
+    @nose.tools.raises(NotImplementedError)
     def test_upload_frames(self):
         self.storage_inst.upload_frames(
             file_names=['im1.png', 'im2.png'],
@@ -132,14 +136,6 @@ class TestDataStorage(unittest.TestCase):
     @nose.tools.raises(NotImplementedError)
     def test_get_stack(self):
         self.storage_inst.get_stack(['file1.png'], (10, 10, 1), 'uint16')
-
-    @nose.tools.raises(NotImplementedError)
-    def get_stack_from_meta(self):
-        self.storage_inst.get_stack_from_meta(self.global_meta, self.frames_meta)
-
-    @nose.tools.raises(NotImplementedError)
-    def test_download_files(self):
-        self.storage_inst.download_files(['f1.png', 'f2.png'], 'local_dest')
 
     @nose.tools.raises(NotImplementedError)
     def test_download_file(self):
