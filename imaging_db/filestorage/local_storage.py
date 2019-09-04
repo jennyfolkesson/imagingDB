@@ -1,6 +1,5 @@
 import concurrent.futures
 import cv2
-import numpy as np
 import os
 import shutil
 
@@ -42,6 +41,9 @@ class LocalStorage(data_storage.DataStorage):
             "Make sure local storage is mounted, dir {} doesn't exist".format(
                 self.mount_point,
             )
+        # Path to dataset ID directory in storage
+        # mount point + raw files/frames + dataset ID
+        self.id_storage_path = os.path.join(self.mount_point, self.storage_dir)
 
     def assert_unique_id(self):
         """
@@ -49,16 +51,35 @@ class LocalStorage(data_storage.DataStorage):
 
         :raise AssertionError: if directory exists
         """
-        dir_path = os.path.join(self.mount_point, self.storage_dir)
-        assert os.path.exists(dir_path) is False,\
-            "ID {} already exists in storage".format(dir_path)
+        assert os.path.exists(self.id_storage_path) is False,\
+            "ID {} already exists in storage".format(self.id_storage_path)
 
     def nonexistent_storage_path(self, storage_path):
+        """
+        Checks that a given path to a file in storage doesn't already exist.
+
+        :param str storage_path: Path in local storage
+        :return bool: True if file doesn't exist in storage, False otherwise
+        """
         dir_path = os.path.join(self.mount_point, storage_path)
         if not os.path.exists(dir_path):
             return True
         else:
             return False
+
+    def get_storage_path(self, file_name):
+        """
+        Given a file name without path, return full storage path,
+        given mount point and storage directory.
+
+        :param str file_name: File name with extension, no path
+        :return str storage_path: Full path to file in storage
+        """
+        storage_path = os.path.join(
+            self.id_storage_path,
+            file_name,
+        )
+        return storage_path
 
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
@@ -68,19 +89,17 @@ class LocalStorage(data_storage.DataStorage):
         :param np.array im_stack: all 2D frames from file converted to stack
         :param str file_format: file format for frames to be written in storage
         """
+        # Create directory if it doesn't exist already
+        os.makedirs(self.id_storage_path, exist_ok=True)
         # Make sure number of file names matches stack shape
         assert len(file_names) == im_stack.shape[-1], \
-            "Number of file names {} doesn't match slices {}".format(
+            "Number of file names {} doesn't match frames {}".format(
                 len(file_names), im_stack.shape[-1])
 
         path_im_tuples = []
         for i, file_name in enumerate(file_names):
-            path_i = os.path.join(
-                self.mount_point,
-                self.storage_dir,
-                file_name,
-            )
-            path_im_tuples.append((path_i, im_stack[..., i]))
+            storage_path = self.get_storage_path(file_name)
+            path_im_tuples.append((storage_path, im_stack[..., i]))
 
         with concurrent.futures.ProcessPoolExecutor(self.nbr_workers) as ex:
             ex.map(self.upload_im_tuple, path_im_tuples)
@@ -94,6 +113,7 @@ class LocalStorage(data_storage.DataStorage):
         """
         (im_path, im) = path_im_tuple
         if self.nonexistent_storage_path(im_path):
+            os.makedirs(self.id_storage_path, exist_ok=True)
             cv2.imwrite(im_path, im)
         else:
             print("File {} already exists.".format(im_path))
@@ -107,28 +127,27 @@ class LocalStorage(data_storage.DataStorage):
         :param np.array im: 2D image
         :param str file_format: File format for writing image
         """
-        im_path = os.path.join(self.mount_point, self.storage_dir, im_name)
+        im_path = self.get_storage_path(im_name)
         if self.nonexistent_storage_path(im_path):
+            os.makedirs(self.id_storage_path, exist_ok=True)
             cv2.imwrite(im_path, im)
         else:
             print("File {} already exists.".format(im_path))
 
-    def upload_file(self, file_name):
+    def upload_file(self, file_path):
         """
         Upload a single file to storage by copying (file is not opened).
 
-        :param str file_name: full path to local file to be moved to storage
+        :param str file_path: full path to local file to be moved to storage
         """
         # ID should be unique, make sure it doesn't already exist
         self.assert_unique_id()
+        # Create directory for file
+        os.makedirs(self.id_storage_path, exist_ok=True)
 
-        file_no_path = file_name.split("/")[-1]
-        save_path = os.path.join(
-            self.mount_point,
-            self.storage_dir,
-            file_no_path,
-        )
-        shutil.copy(file_name, save_path)
+        file_name = file_path.split("/")[-1]
+        save_path = self.get_storage_path(file_name)
+        shutil.copy(file_path, save_path)
 
     def get_im(self, file_name):
         """
@@ -139,7 +158,7 @@ class LocalStorage(data_storage.DataStorage):
         :param str file_name: File name of 2D image (frame)
         :return np.array im: 2D image
         """
-        im_path = os.path.join(self.mount_point, self.storage_dir, file_name)
+        im_path = self.get_storage_path(file_name)
         im = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
         return im
 
@@ -151,10 +170,6 @@ class LocalStorage(data_storage.DataStorage):
         :param str file_name: File name
         :param str dest_dir: Destination directory name
         """
-        storage_path = os.path.join(
-            self.mount_point,
-            self.storage_dir,
-            file_name,
-        )
+        storage_path = self.get_storage_path(file_name)
         dest_path = os.path.join(dest_dir, file_name)
         shutil.copy(storage_path, dest_path)

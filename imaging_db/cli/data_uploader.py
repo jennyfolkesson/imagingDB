@@ -206,7 +206,7 @@ def upload_data_and_update_db(csv,
             if not override:
                 data_uploader.assert_unique_id()
             try:
-                data_uploader.upload_file(file_name=row.file_name)
+                data_uploader.upload_file(file_path=row.file_name)
                 print("File {} uploaded to S3".format(row.file_name))
             except AssertionError as e:
                 print("File already on S3, moving on to DB entry. {}".format(e))

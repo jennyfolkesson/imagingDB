@@ -127,7 +127,7 @@ class TestDataStorage(unittest.TestCase):
 
     @nose.tools.raises(NotImplementedError)
     def test_upload_file(self):
-        self.storage_inst.upload_file('file_name.hdf5')
+        self.storage_inst.upload_file('/local_path/file_name.hdf5')
 
     @nose.tools.raises(NotImplementedError)
     def test_get_im(self):

@@ -122,11 +122,11 @@ class DataStorage(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def upload_file(self, file_name):
+    def upload_file(self, file_path):
         """
         Upload a single file to storage by copying (file is not opened).
 
-        :param str file_name: full path to file
+        :param str file_path: Full path to file to be moved to storage
         """
         raise NotImplementedError
 
@@ -190,6 +190,7 @@ class DataStorage(metaclass=ABCMeta):
 
         :param dict global_meta: Global metadata for dataset
         :param dataframe frames_meta: Local metadata and paths for each file
+
         :return np.array im_stack: Stack of 2D images with dimensions given below
         :return str dim_str: String indicating order of stack dimensions
             Possible values: XYGZCTP

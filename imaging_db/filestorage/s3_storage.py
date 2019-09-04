@@ -1,6 +1,5 @@
 import boto3
 import concurrent.futures
-import numpy as np
 import os
 
 import imaging_db.filestorage.data_storage as data_storage
@@ -45,6 +44,12 @@ class S3Storage(data_storage.DataStorage):
             "Key already exists on S3: {}".format(self.storage_dir)
 
     def nonexistent_storage_path(self, storage_path):
+        """
+        Checks that a given path to a file in storage doesn't already exist.
+
+        :param str storage_path: Path in S3 storage
+        :return bool: True if file doesn't exist in storage, False otherwise
+        """
         response = self.s3_client.list_objects_v2(
             Bucket=self.bucket_name,
             Prefix=storage_path,
@@ -129,19 +134,19 @@ class S3Storage(data_storage.DataStorage):
         else:
             print("Key {} already exists.".format(key))
 
-    def upload_file(self, file_name):
+    def upload_file(self, file_path):
         """
         Upload a single file to S3 without reading its contents
 
-        :param str file_name: Full path to file that should be uploaded
+        :param str file_path: Full path to file to be uploaded
         """
         # ID should be unique, make sure it doesn't already exist
         self.assert_unique_id()
 
-        file_no_path = file_name.split("/")[-1]
-        key = "/".join([self.storage_dir, file_no_path])
+        file_name = file_path.split("/")[-1]
+        key = "/".join([self.storage_dir, file_name])
         self.s3_client.upload_file(
-            file_name,
+            file_path,
             self.bucket_name,
             key,
         )

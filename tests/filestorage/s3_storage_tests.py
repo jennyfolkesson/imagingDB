@@ -11,6 +11,7 @@ import unittest
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
+from tests.cli.query_data_tests import captured_output
 
 
 class TestS3Storage(unittest.TestCase):
@@ -51,18 +52,30 @@ class TestS3Storage(unittest.TestCase):
         nose.tools.assert_equal(os.path.isdir(self.temp_path), False)
         self.mock.stop()
 
-    def test_upload_file(self):
+    def test_assert_unique_id(self):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
-        data_storage.upload_file(file_name=self.file_path)
-        # Make sure the image uploaded in setUp is unchanged
-        key = "/".join([self.storage_dir, self.im_name])
-        byte_string = self.conn.Object(self.bucket_name,
-                                  key).get()['Body'].read()
-        # Construct an array from the bytes and decode image
-        im_out = im_utils.deserialize_im(byte_string)
-        # Assert that contents are the same
-        nose.tools.assert_equal(im_out.dtype, np.uint16)
-        numpy.testing.assert_array_equal(im_out, self.im)
+        data_storage.assert_unique_id()
+
+    @nose.tools.raises(AssertionError)
+    def test_assert_unique_id_exists(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        data_storage.upload_file(file_path=self.file_path)
+        data_storage.assert_unique_id()
+
+    def test_nonexistent_storage_path(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        storage_path = os.path.join(self.storage_dir, self.im_name)
+        self.assertTrue(data_storage.nonexistent_storage_path(
+            storage_path=storage_path,
+        ))
+
+    def test_existing_storage_path(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        data_storage.upload_file(file_path=self.file_path)
+        storage_path = os.path.join(self.storage_dir, self.im_name)
+        self.assertFalse(data_storage.nonexistent_storage_path(
+            storage_path=storage_path,
+        ))
 
     def test_upload_frames(self):
         # Upload image stack
@@ -119,9 +132,36 @@ class TestS3Storage(unittest.TestCase):
         im = im_utils.deserialize_im(byte_string)
         numpy.testing.assert_array_equal(im, self.im)
 
+    def test_upload_existing_im(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        key = "/".join([self.storage_dir, self.im_name])
+        data_storage.upload_im(im_name=self.im_name, im=self.im)
+        with captured_output() as (out, err):
+            data_storage.upload_im(im_name=self.im_name, im=self.im)
+        std_output = out.getvalue().strip()
+        self.assertEqual(
+            std_output,
+            "Key {} already exists.".format(key),
+        )
+
+    def test_upload_file(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        data_storage.upload_file(file_path=self.file_path)
+        # Make sure the image uploaded in setUp is unchanged
+        key = "/".join([self.storage_dir, self.im_name])
+        byte_string = self.conn.Object(
+            self.bucket_name,
+            key,
+        ).get()['Body'].read()
+        # Construct an array from the bytes and decode image
+        im_out = im_utils.deserialize_im(byte_string)
+        # Assert that contents are the same
+        nose.tools.assert_equal(im_out.dtype, np.uint16)
+        numpy.testing.assert_array_equal(im_out, self.im)
+
     def test_upload_file_get_im(self):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
-        data_storage.upload_file(file_name=self.file_path)
+        data_storage.upload_file(file_path=self.file_path)
         # Load the temporary image
         im_out = data_storage.get_im(file_name=self.im_name)
         # Assert that contents are the same
@@ -141,8 +181,10 @@ class TestS3Storage(unittest.TestCase):
         nose.tools.assert_equal(self.im_stack.shape, im_out.shape)
         for im_nbr in range(self.im_stack.shape[-1]):
             # Assert that contents are the same
-            numpy.testing.assert_array_equal(im_out[..., im_nbr],
-                                             self.im_stack[..., im_nbr])
+            numpy.testing.assert_array_equal(
+                im_out[..., im_nbr],
+                self.im_stack[..., im_nbr],
+            )
 
     def test_get_stack_from_meta(self):
         # Upload image stack
@@ -168,7 +210,7 @@ class TestS3Storage(unittest.TestCase):
         nbr_frames = self.im_stack.shape[2]
         sha = [None] * nbr_frames
         for i in range(nbr_frames):
-            sha[i] = meta_utils.gen_sha256(self.im_stack[...,i])
+            sha[i] = meta_utils.gen_sha256(self.im_stack[..., i])
 
         frames_meta.loc[0] = [0, 0, 0, "A", "im1.png", 0, sha[0]]
         frames_meta.loc[1] = [1, 0, 0, "B", "im2.png", 0, sha[1]]
@@ -202,7 +244,7 @@ class TestS3Storage(unittest.TestCase):
 
     def test_download_file(self):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
-        data_storage.upload_file(file_name=self.file_path)
+        data_storage.upload_file(file_path=self.file_path)
         # Download the temporary image then read it and validate
         data_storage.download_file(
             file_name=self.im_name,
@@ -213,4 +255,3 @@ class TestS3Storage(unittest.TestCase):
         im_out = cv2.imread(dest_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
         nose.tools.assert_equal(im_out.dtype, np.uint16)
         numpy.testing.assert_array_equal(im_out, self.im)
-
