@@ -7,7 +7,6 @@ from testfixtures import TempDirectory
 import unittest
 
 import imaging_db.filestorage.local_storage as local_storage
-import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 from tests.cli.query_data_tests import captured_output
 
@@ -45,7 +44,7 @@ class TestLocalStorage(unittest.TestCase):
         self.data_storage = local_storage.LocalStorage(
             storage_dir=self.storage_dir,
             nbr_workers=self.nbr_workers,
-            mount_point=self.mount_point,
+            access_point=self.mount_point,
         )
         self.storage_path = os.path.join(
             self.mount_point,
@@ -64,7 +63,7 @@ class TestLocalStorage(unittest.TestCase):
         self.existing_storage = local_storage.LocalStorage(
             storage_dir=self.existing_dir,
             nbr_workers=self.nbr_workers,
-            mount_point=self.mount_point,
+            access_point=self.mount_point,
         )
         cv2.imwrite(self.existing_path, self.im)
 
@@ -74,6 +73,13 @@ class TestLocalStorage(unittest.TestCase):
         """
         TempDirectory.cleanup_all()
         nose.tools.assert_equal(os.path.isdir(self.temp_path), False)
+
+    @nose.tools.raises(AssertionError)
+    def test_init_no_mount(self):
+        local_storage.LocalStorage(
+            storage_dir=self.existing_dir,
+            nbr_workers=self.nbr_workers,
+        )
 
     def test_assert_unique_id(self):
         self.data_storage.assert_unique_id()
@@ -201,6 +207,22 @@ class TestLocalStorage(unittest.TestCase):
             stack_shape=stack_shape,
             bit_depth=np.uint16)
         im_out = np.squeeze(im_out)
+        nose.tools.assert_equal(self.im_stack.shape, im_out.shape)
+        for im_nbr in range(self.im_stack.shape[-1]):
+            # Assert that contents are the same
+            numpy.testing.assert_array_equal(
+                im_out[..., im_nbr],
+                self.im_stack[..., im_nbr],
+            )
+
+    def test_get_stack_no_colordim(self):
+        self.data_storage.upload_frames(self.stack_names, self.im_stack)
+        # Load image stack in memory
+        stack_shape = (10, 15, 5)
+        im_out = self.data_storage.get_stack(
+            self.stack_names,
+            stack_shape=stack_shape,
+            bit_depth=np.uint16)
         nose.tools.assert_equal(self.im_stack.shape, im_out.shape)
         for im_nbr in range(self.im_stack.shape[-1]):
             # Assert that contents are the same

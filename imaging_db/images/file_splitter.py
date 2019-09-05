@@ -10,6 +10,8 @@ class FileSplitter(metaclass=ABCMeta):
     def __init__(self,
                  data_path,
                  storage_dir,
+                 storage_class,
+                 storage_access=None,
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
@@ -17,14 +19,26 @@ class FileSplitter(metaclass=ABCMeta):
         """
         :param str data_path: Full path to file or directory name
         :param str storage_dir: Directory where data will be stored
+        :param class storage_class: LocalStorage or S3Storage filestorage class
+        :param str/None storage_access: If not using predefined storage locations,
+            this parameter refers to mount_point for local storage and
+            bucket_name for S3 storage.
         :param bool override: Will not continue DataStorage if dataset is already
-         present on S3.
+            present in storage.
         :param str file_format: Image file format (preferred is png)
         :param int int2str_len: How many integers will be added to each index
         """
         self.data_path = data_path
         self.storage_dir = storage_dir
-        self.override = override
+        # Instantiate local or S3 storage class
+        self.data_uploader = storage_class(
+            storage_dir=self.storage_dir,
+            nbr_workers=nbr_workers,
+            access_point=storage_access,
+        )
+        if not override:
+            self.data_uploader.assert_unique_id()
+
         self.file_format = file_format
         self.nbr_workers = nbr_workers
         self.int2str_len = int2str_len
@@ -71,9 +85,7 @@ class FileSplitter(metaclass=ABCMeta):
 
         :param ndarray im_stack: image to be hashed
         :return list sha: sha256 hashes indexed by the image index
-
         """
-
         sha = []
         for i in range(im_stack.shape[3]):
             sha.append(meta_utils.gen_sha256(im_stack[..., i]))

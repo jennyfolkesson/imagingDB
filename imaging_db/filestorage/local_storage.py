@@ -12,7 +12,7 @@ class LocalStorage(data_storage.DataStorage):
     def __init__(self,
                  storage_dir,
                  nbr_workers=None,
-                 mount_point=None):
+                 access_point=None):
         """
         Local storage is assumed to be mounted at STORAGE_MOUNT_POINT
         unless otherwise specified.
@@ -27,16 +27,17 @@ class LocalStorage(data_storage.DataStorage):
         :param str storage_dir: Directory name (dataset ID) in raw_frames or
         raw_files (e.g. raw_frames/ID-YYYY-MM-DD-HH-MM-SS-SSSS)
         :param int nbr_workers: Number of workers for uploads/downloads
-        :param str/None mount_point: Path to where local storage is mounted.
-            Default /Volumes/data_lg/czbiohub-imaging
+        :param str/None access_point: Path to where local storage is mounted.
+            Default mount point: /Volumes/data_lg/czbiohub-imaging
         """
-        super().__init__(storage_dir,
-                         nbr_workers)
+        super().__init__(storage_dir=storage_dir,
+                         nbr_workers=nbr_workers,
+                         access_point=access_point)
 
-        if mount_point is None:
+        if self.access_point is None:
             self.mount_point = data_storage.STORAGE_MOUNT_POINT
         else:
-            self.mount_point = mount_point
+            self.mount_point = self.access_point
         assert os.path.exists(self.mount_point),\
             "Make sure local storage is mounted, dir {} doesn't exist".format(
                 self.mount_point,

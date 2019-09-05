@@ -179,7 +179,7 @@ class TestQueryData(db_basetest.DBBaseTest):
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
-    def test_query_data_description(self, mock_session):
+    def test_query_data_date_swap(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         query_data.query_data(
             login=self.credentials_path,
@@ -189,7 +189,7 @@ class TestQueryData(db_basetest.DBBaseTest):
 
     @nose.tools.raises(TypeError)
     @patch('imaging_db.database.db_operations.session_scope')
-    def test_query_data_no_loging(self, mock_session):
+    def test_query_data_no_login(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         query_data.query_data(
             start_date='2010-05-01',

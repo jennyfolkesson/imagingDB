@@ -9,7 +9,7 @@ S3_BUCKET_NAME = "czbiohub-imaging"
 class DataStorage(metaclass=ABCMeta):
     """Abstract class with required functions for all data transfers"""
 
-    def __init__(self, storage_dir, nbr_workers=None):
+    def __init__(self, storage_dir, nbr_workers=None, access_point=None):
         """
         Initialize abstract class. Main directories for both S3 and local
         storage are
@@ -19,11 +19,16 @@ class DataStorage(metaclass=ABCMeta):
         raw_files: For files that have not been separated into frames + metadata.
             They're copied to storage as is.
 
-        :param str storage_dir: Directory name (dataset ID) in raw_frames or raw_files
+        :param str storage_dir: Directory name (dataset ID) in raw_frames or
+            raw_files
         :param int nbr_workers: Number of workers for uploads/downloads
+        :param str/None access_point: If not using predefined storage locations,
+            this parameter refers to mount_point for local storage and
+            bucket_name for S3 storage.
         """
         self.storage_dir = storage_dir
         self.nbr_workers = nbr_workers
+        self.access_point = access_point
 
     @staticmethod
     def make_stack_from_meta(global_meta, frames_meta):

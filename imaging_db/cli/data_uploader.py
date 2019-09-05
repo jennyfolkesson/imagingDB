@@ -51,6 +51,21 @@ def parse_args():
     )
     parser.set_defaults(override=False)
     parser.add_argument(
+        '--storage',
+        type=str,
+        default='local',
+        help="Optional: Specify 'local' (default) or 's3'."
+             "Uploads to local storage will be synced to S3 daily.",
+    )
+    parser.add_argument(
+        '--storage_access',
+        type=int,
+        default=None,
+        help="If using a different storage than defaults, specify here."
+             "Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)"
+             "for local storage, czbiohub-imaging (bucket name) for S3 storage."
+    )
+    parser.add_argument(
         '--nbr_workers',
         type=int,
         default=None,
@@ -63,6 +78,8 @@ def upload_data_and_update_db(csv,
                               login,
                               config,
                               nbr_workers=None,
+                              storage='local',
+                              storage_access=None,
                               override=False):
     """
     Split, crop volumes and flatfield correct images in input and target
@@ -83,9 +100,19 @@ def upload_data_and_update_db(csv,
             str upload_type: Specify if the file should be split prior to upload
                 Valid options: 'frames' or 'file'
             str frames_format: Which file splitter class to use.
-                Valid options: 'ome_tiff', 'tiffolder', 'tifvideo'
+                Valid options:
+                'ome_tiff' needs MicroManagerMetadata tag for each frame for metadata
+                'tif_folder' when each file is already an individual frame
+                and relies on MicroManager metadata
+                'tif_id' needs ImageDescription tag in first frame page for metadata
             str json_meta: If slice, give full path to json metadata schema
     :param int, None nbr_workers: Number of workers for parallel uploads
+    :param str storage: 'local' (default) - data will be stored locally and
+                synced to S3 the same day. Or 'S3' - data will be uploaded
+                directly to S3 then synced with local storage daily.
+    :param str/None storage_access: If not using predefined storage locations,
+            this parameter refers to mount_point for local storage and
+            bucket_name for S3 storage.
     :param bool override: Use with caution if your upload if your upload was
             interrupted and you want to overwrite existing data in database
             and storage
@@ -112,6 +139,8 @@ def upload_data_and_update_db(csv,
     if nbr_workers is not None:
         assert nbr_workers > 0, \
             "Nbr of worker must be >0, not {}".format(nbr_workers)
+    # Import local or S3 storage class
+    storage_class = aux_utils.get_storage_class(storage_type=storage)
 
     # Make sure microscope is a string
     microscope = None
@@ -162,6 +191,8 @@ def upload_data_and_update_db(csv,
             frames_inst = splitter_class(
                 data_path=row.file_name,
                 storage_dir=storage_dir,
+                storage_class=storage_class,
+                storage_access=storage_access,
                 override=override,
                 file_format=FRAME_FILE_FORMAT,
                 nbr_workers=nbr_workers,
@@ -200,8 +231,9 @@ def upload_data_and_update_db(csv,
             # Just upload file without opening it
             assert os.path.isfile(row.file_name), \
                 "File doesn't exist: {}".format(row.file_name)
-            data_uploader = s3_storage.S3Storage(
+            data_uploader = storage_class(
                 storage_dir=storage_dir,
+                access_point=storage_access,
             )
             if not override:
                 data_uploader.assert_unique_id()
@@ -239,5 +271,7 @@ if __name__ == '__main__':
         login=args.login,
         config=args.config,
         nbr_workers=args.nbr_workers,
+        storage=args.storage,
+        storage_access=args.storage_access,
         override=args.override,
     )

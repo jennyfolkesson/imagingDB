@@ -12,22 +12,23 @@ class S3Storage(data_storage.DataStorage):
     def __init__(self,
                  storage_dir,
                  nbr_workers=None,
-                 bucket_name=None):
+                 access_point=None):
         """
         Initialize S3 client and check that ID doesn't exist already
 
         :param str storage_dir: Directory name in S3 bucket:
             raw_frames or raw_files / dataset ID
         :param int nbr_workers: Number of workers for uploads/downloads
-        :param str bucket_name: S3 bucket name. Default: czbiohub-imaging
+        :param str access_point: S3 bucket name. Default: czbiohub-imaging
         """
-        super().__init__(storage_dir,
-                         nbr_workers)
+        super().__init__(storage_dir=storage_dir,
+                         nbr_workers=nbr_workers,
+                         access_point=access_point)
 
-        if bucket_name is None:
+        if self.access_point is None:
             self.bucket_name = data_storage.S3_BUCKET_NAME
         else:
-            self.bucket_name = bucket_name
+            self.bucket_name = self.access_point
         self.s3_client = boto3.client('s3')
 
     def assert_unique_id(self):

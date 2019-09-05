@@ -69,6 +69,7 @@ class TestDataStorage(unittest.TestCase):
     def test__init__(self):
         self.assertEqual(self.storage_inst.storage_dir, 'test_storage')
         self.assertEqual(self.storage_inst.nbr_workers, 12)
+        self.assertIsNone(self.storage_inst.access_point)
 
     def test_make_stack_from_meta(self):
         im_stack, unique_ids = self.storage_inst.make_stack_from_meta(

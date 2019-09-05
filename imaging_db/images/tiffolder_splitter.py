@@ -7,7 +7,6 @@ import tifffile
 
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.images.filename_parsers as file_parsers
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.meta_utils as meta_utils
 
@@ -19,13 +18,17 @@ class TifFolderSplitter(file_splitter.FileSplitter):
     def __init__(self,
                  data_path,
                  storage_dir,
+                 storage_class,
+                 storage_access=None,
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
         
-        super().__init__(data_path,
-                         storage_dir,
+        super().__init__(data_path=data_path,
+                         storage_dir=storage_dir,
+                         storage_class=storage_class,
+                         storage_access=storage_access,
                          override=override,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
@@ -34,12 +37,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         self.channel_names = []
 
         global data_uploader
-        data_uploader = s3_storage.S3Storage(
-            storage_dir=self.storage_dir,
-            nbr_workers=self.nbr_workers,
-        )
-        if not override:
-            data_uploader.assert_unique_id()
+        data_uploader = self.data_uploader
 
     def set_frame_info(self, meta_summary):
         """

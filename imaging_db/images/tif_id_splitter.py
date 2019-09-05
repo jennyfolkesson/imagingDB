@@ -3,7 +3,6 @@ import numpy as np
 import os
 import tifffile
 
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.utils.meta_utils as meta_utils
@@ -18,24 +17,21 @@ class TifIDSplitter(file_splitter.FileSplitter):
     def __init__(self,
                  data_path,
                  storage_dir,
+                 storage_class,
+                 storage_access=None,
                  override=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
 
-        super().__init__(data_path,
-                         storage_dir,
+        super().__init__(data_path=data_path,
+                         storage_dir=storage_dir,
+                         storage_class=storage_class,
+                         storage_access=storage_access,
                          override=override,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
                          int2str_len=int2str_len)
-
-        self.data_uploader = s3_storage.S3Storage(
-            storage_dir=self.storage_dir,
-            nbr_workers=self.nbr_workers,
-        )
-        if not override:
-            self.data_uploader.assert_unique_id()
 
     def set_frame_info(self, page):
         """
@@ -61,8 +57,7 @@ class TifIDSplitter(file_splitter.FileSplitter):
             self.bit_depth = "uint16"
             float2uint = True
         else:
-            print("Bit depth must be 16 or 8, not {}".format(bits_val))
-            raise ValueError
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(bits_val))
         return float2uint
 
     def _get_params_from_str(self, im_description):

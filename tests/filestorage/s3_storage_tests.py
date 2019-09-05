@@ -52,6 +52,14 @@ class TestS3Storage(unittest.TestCase):
         nose.tools.assert_equal(os.path.isdir(self.temp_path), False)
         self.mock.stop()
 
+    def test_init(self):
+        data_storage = s3_storage.S3Storage(
+            storage_dir=self.storage_dir,
+            nbr_workers=self.nbr_workers,
+            access_point='test_bucket_name',
+        )
+        self.assertEqual(data_storage.bucket_name, 'test_bucket_name')
+
     def test_assert_unique_id(self):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.assert_unique_id()
