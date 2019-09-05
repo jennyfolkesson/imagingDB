@@ -55,9 +55,8 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         elif meta_summary["BitDepth"] == 8:
             self.bit_depth = "uint8"
         else:
-            print("Bit depth must be 16 or 8, not {}".format(
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(
                 meta_summary["BitDepth"]))
-            raise ValueError
 
     def _set_frame_meta(self, parse_func, file_name):
         """

@@ -1,4 +1,5 @@
 import boto3
+import importlib
 import itertools
 import json
 from moto import mock_s3
@@ -419,3 +420,19 @@ class TestDataUploader(db_basetest.DBBaseTest):
             config=config_path,
             storage='s3',
         )
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test__main__(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--csv', self.csv_path,
+                    '--login', self.credentials_path,
+                    '--storage', 's3',
+                    '--config', self.config_path]):
+            spec = importlib.util.spec_from_file_location(
+                '__main__',
+                'imaging_db/cli/data_uploader.py',
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)

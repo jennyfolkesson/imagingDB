@@ -4,7 +4,6 @@ import argparse
 import os
 
 import imaging_db.database.db_operations as db_ops
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.cli_utils as cli_utils

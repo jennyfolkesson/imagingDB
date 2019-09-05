@@ -1,6 +1,7 @@
 import boto3
 import cv2
 import glob
+import importlib
 import itertools
 from moto import mock_s3
 import nose.tools
@@ -244,6 +245,22 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         for i, row in frames_meta.iterrows():
             self.assertEqual(row.channel_idx, 1)
 
+    @nose.tools.raises(AssertionError)
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_download_channel_name(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial,
+            login=self.credentials_path,
+            dest=dest_dir,
+            storage='s3',
+            channels='channel1',
+        )
+
     @patch('imaging_db.database.db_operations.session_scope')
     def test_download_pts(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
@@ -366,3 +383,22 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             download=False,
             nbr_workers=-2,
         )
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test__main__(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--id', self.dataset_serial,
+                    '--dest', dest_dir,
+                    '--storage', 's3',
+                    '--login', self.credentials_path]):
+            spec = importlib.util.spec_from_file_location(
+                '__main__',
+                'imaging_db/cli/data_downloader.py',
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
