@@ -1,8 +1,9 @@
 from contextlib import contextmanager
+import importlib
+from io import StringIO
 import nose.tools
 import os
 import sys
-from io import StringIO
 from unittest.mock import patch
 
 import imaging_db.database.db_operations as db_ops
@@ -194,3 +195,18 @@ class TestQueryData(db_basetest.DBBaseTest):
         query_data.query_data(
             start_date='2010-05-01',
         )
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test__main__(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--login', self.credentials_path,
+                    '--start_date', '2010-05-01',
+                    '--end_date', '2010-06-15']):
+            spec = importlib.util.spec_from_file_location(
+                '__main__',
+                'imaging_db/cli/query_data.py',
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)

@@ -17,7 +17,6 @@ import imaging_db.cli.data_downloader as data_downloader
 import imaging_db.cli.data_uploader as data_uploader
 import tests.database.db_basetest as db_basetest
 import imaging_db.metadata.json_operations as json_ops
-import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
