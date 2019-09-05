@@ -10,6 +10,7 @@ import tifffile
 import unittest
 
 import imaging_db.images.ometif_splitter as ometif_splitter
+import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.image_utils as im_utils
 
 
@@ -60,19 +61,22 @@ class TestOmeTiffSplitter(unittest.TestCase):
         extra_tags = [('MicroManagerMetadata', 's', 0, mmmetadata, True)]
         # Save test ome tif file
         self.file_path1 = os.path.join(self.temp_path, "test_Pos1.ome.tif")
-        tifffile.imsave(self.file_path1,
-                        self.im,
-                        ijmetadata=ijmeta,
-                        extratags=extra_tags,
-                        )
+        tifffile.imsave(
+            self.file_path1,
+            self.im,
+            ijmetadata=ijmeta,
+            extratags=extra_tags,
+        )
         mmmetadata = self._get_mmmeta(pos_idx=3)
         extra_tags = [('MicroManagerMetadata', 's', 0, mmmetadata, True)]
         # Save test ome tif file
         self.file_path3 = os.path.join(self.temp_path, "test_Pos3.ome.tif")
-        tifffile.imsave(self.file_path3,
-                        self.im,
-                        ijmetadata=ijmeta,
-                        extratags=extra_tags)
+        tifffile.imsave(
+            self.file_path3,
+            self.im,
+            ijmetadata=ijmeta,
+            extratags=extra_tags,
+        )
         # Setup mock S3 bucket
         self.mock = mock_s3()
         self.mock.start()
@@ -80,11 +84,11 @@ class TestOmeTiffSplitter(unittest.TestCase):
         self.bucket_name = 'czbiohub-imaging'
         self.conn.create_bucket(Bucket=self.bucket_name)
         # Instantiate file parser class
+        self.storage_class = aux_utils.get_storage_class('s3')
         self.frames_inst = ometif_splitter.OmeTiffSplitter(
             data_path=self.temp_path,
             storage_dir="raw_frames/ISP-2005-06-09-20-00-00-0001",
-            override=False,
-            file_format=".png",
+            storage_class=self.storage_class,
         )
         # Get path to json schema file
         dir_name = os.path.dirname(__file__)
@@ -148,18 +152,30 @@ class TestOmeTiffSplitter(unittest.TestCase):
             schema_filename=self.schema_file_path,
         )
         # meta
-        nose.tools.assert_equal(frames_meta.loc[0, 'channel_idx'],
-                                self.channel_idx)
-        nose.tools.assert_equal(frames_meta.loc[0, 'time_idx'],
-                                self.time_idx)
-        nose.tools.assert_equal(frames_meta.loc[0, 'slice_idx'],
-                                self.slice_idx)
-        nose.tools.assert_equal(frames_meta.loc[0, 'channel_name'],
-                                self.channel_name)
-        nose.tools.assert_equal(frames_meta.loc[0, 'pos_idx'],
-                                3)
-        nose.tools.assert_equal(frames_meta.loc[0, 'file_name'],
-                                "im_c001_z002_t003_p003.png")
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'channel_idx'],
+            self.channel_idx,
+        )
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'time_idx'],
+            self.time_idx,
+        )
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'slice_idx'],
+            self.slice_idx,
+        )
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'channel_name'],
+            self.channel_name,
+        )
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'pos_idx'],
+            3,
+        )
+        nose.tools.assert_equal(
+            frames_meta.loc[0, 'file_name'],
+            "im_c001_z002_t003_p003.png",
+        )
         # The file has one frame and is gray, expecting shape (10, 15, 1, 1)
         self.assertSequenceEqual(im_stack.shape, (10, 15, 1, 1))
         # Assert that im_stack without extra dimensions is self.im
@@ -214,8 +230,7 @@ class TestOmeTiffSplitter(unittest.TestCase):
         frames_inst = ometif_splitter.OmeTiffSplitter(
             data_path=file_path_col,
             storage_dir="raw_frames/ISP-2005-06-09-20-00-00-0002",
-            override=False,
-            file_format=".png",
+            storage_class=self.storage_class,
         )
         # Upload data
         frames_inst.get_frames_and_metadata(

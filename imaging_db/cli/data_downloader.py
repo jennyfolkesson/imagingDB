@@ -6,6 +6,7 @@ import os
 import imaging_db.database.db_operations as db_ops
 import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
+import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.utils.db_utils as db_utils
 
@@ -22,6 +23,40 @@ def parse_args():
         type=str,
         required=True,
         help="Unique dataset identifier",
+    )
+    parser.add_argument(
+        '--login',
+        type=str,
+        required=True,
+        help="Full path to file containing JSON with DB login credentials",
+    )
+    parser.add_argument(
+        '--dest',
+        type=str,
+        required=True,
+        help="Main destination directory, in which a subdir named args.id "
+             "\will be created",
+    )
+    parser.add_argument(
+        '--storage',
+        type=str,
+        default='local',
+        help="Optional: Specify 'local' (default) or 's3'."
+             "Uploads to local storage will be synced to S3 daily.",
+    )
+    parser.add_argument(
+        '--storage_access',
+        type=str,
+        default=None,
+        help="If using a different storage than defaults, specify here."
+             "Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)"
+             "for local storage, czbiohub-imaging (bucket name) for S3 storage."
+    )
+    parser.add_argument(
+        '--nbr_workers',
+        type=int,
+        default=None,
+        help="Number of treads to increase download speed"
     )
     parser.add_argument(
         '-p', '--positions',
@@ -52,55 +87,27 @@ def parse_args():
         help="Tuple containing the z slices to download",
     )
     parser.add_argument(
-        '--dest',
-        type=str,
-        required=True,
-        help="Main destination directory, in which a subdir named args.id "
-             "\will be created",
-    )
-    parser.add_argument(
-        '--metadata',
-        dest='metadata',
-        action='store_true',
-        help="Write csvs with metadata (for datasets split into frames only)",
-    )
-    parser.add_argument(
         '--no-metadata',
         dest='metadata',
         action='store_false',
+        help="Don't write csvs with metadata (for datasets split into frames only)",
     )
     parser.set_defaults(metadata=True)
-    parser.add_argument(
-        '--download',
-        dest='download',
-        action='store_true',
-        help="Download all files (for datasets split into frames only)",
-    )
     parser.add_argument(
         '--no-download',
         dest='download',
         action='store_false',
+        help="Don't download files (for datasets split into frames only)",
     )
     parser.set_defaults(download=True)
-    parser.add_argument(
-        '--login',
-        type=str,
-        required=True,
-        help="Full path to file containing JSON with DB login credentials",
-    )
-    parser.add_argument(
-        '--nbr_workers',
-        type=int,
-        default=None,
-        help="Number of treads to increase download speed"
-    )
-
     return parser.parse_args()
 
 
 def download_data(dataset_serial,
                   login,
                   dest,
+                  storage='local',
+                  storage_access=None,
                   metadata=True,
                   download=True,
                   nbr_workers=None,
@@ -114,20 +121,26 @@ def download_data(dataset_serial,
 
     :param str dataset_serial: Unique dataset identifier
     :param str login: Full path to json file containing database login
-            credentials
+                credentials
     :param str dest: Local destination directory name
+    :param str storage: 'local' (default) - data will be stored locally and
+                synced to S3 the same day. Or 'S3' - data will be uploaded
+                directly to S3 then synced with local storage daily.
+    :param str/None storage_access: If not using predefined storage locations,
+                this parameter refers to mount_point for local storage and
+                bucket_name for S3 storage.
     :param bool download: Downloads all files associated with dataset (default)
-            If False, will only write csvs with metadata. Only for
-            datasets split into frames
+                If False, will only write csvs with metadata. Only for
+                datasets split into frames
     :param bool metadata: Writes metadata (default True)
-            global metadata in json, local for each frame in csv
+                global metadata in json, local for each frame in csv
     :param int, None nbr_workers: Number of workers for parallel download
-            If None, it defaults to number of machine processors * 5
+                If None, it defaults to number of machine processors * 5
     :param list, None positions: Positions (FOVs) as integers (default
-            None downloads all)
+                None downloads all)
     :param list, None times: Timepoints as integers (default None downloads all)
     :param list, None channels: Channels as integer indices or strings for channel
-            names (default None downloads all)
+                names (default None downloads all)
     :param list, None slices: Slice (z) integer indices (Default None downloads all)
     """
     try:
@@ -153,6 +166,8 @@ def download_data(dataset_serial,
     db_inst = db_ops.DatabaseOperations(
         dataset_serial=dataset_serial,
     )
+    # Import local or S3 storage class
+    storage_class = aux_utils.get_storage_class(storage_type=storage)
 
     if metadata is False:
         # Just download file(s)
@@ -211,9 +226,10 @@ def download_data(dataset_serial,
         if nbr_workers is not None:
             assert nbr_workers > 0,\
                 "Nbr of worker must be >0, not {}".format(nbr_workers)
-        data_loader = s3_storage.S3Storage(
+        data_loader = storage_class(
             storage_dir=storage_dir,
             nbr_workers=nbr_workers,
+            access_point=storage_access,
         )
         data_loader.download_files(file_names, dest_dir)
 
@@ -224,6 +240,8 @@ if __name__ == '__main__':
         dataset_serial=args.id,
         login=args.login,
         dest=args.dest,
+        storage=args.storage,
+        storage_access=args.storage_access,
         metadata=args.metadata,
         download=args.download,
         nbr_workers=args.nbr_workers,

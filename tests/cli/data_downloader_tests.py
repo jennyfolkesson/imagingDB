@@ -16,6 +16,7 @@ import imaging_db.cli.data_downloader as data_downloader
 import imaging_db.cli.data_uploader as data_uploader
 import tests.database.db_basetest as db_basetest
 import imaging_db.metadata.json_operations as json_ops
+import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.meta_utils as meta_utils
 
 
@@ -88,6 +89,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
         )
         # Upload file
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
@@ -109,6 +111,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
+            storage='s3',
         )
 
     def tearDown(self):
@@ -168,6 +171,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
         )
         # Images are separated by slice first then channel
         im_order = [0, 2, 4, 1, 3, 5]
@@ -228,6 +232,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             channels='1',
         )
         meta_path = os.path.join(
@@ -250,6 +255,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             positions='0',
             times='0',
             slices='1',
@@ -276,6 +282,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             metadata=False,
             nbr_workers=2,
         )
@@ -302,6 +309,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             nbr_workers=2,
             metadata=False,
         )
@@ -317,6 +325,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             metadata=False,
             download=False,
             nbr_workers=2,
@@ -336,6 +345,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial='Not-a-serial',
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             metadata=False,
             nbr_workers=2,
         )
@@ -351,6 +361,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             dataset_serial=self.dataset_serial_file,
             login=self.credentials_path,
             dest=dest_dir,
+            storage='s3',
             metadata=False,
             download=False,
             nbr_workers=-2,

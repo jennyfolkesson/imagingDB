@@ -105,6 +105,8 @@ class TestDataUploader(db_basetest.DBBaseTest):
             self.assertEqual(parsed_args.login, 'test_login.json')
             self.assertEqual(parsed_args.config, 'test_config.json')
             self.assertFalse(parsed_args.override)
+            self.assertEqual(parsed_args.storage, 'local')
+            self.assertIsNone(parsed_args.storage_access)
             self.assertEqual(parsed_args.nbr_workers, 5)
 
     @patch('imaging_db.database.db_operations.session_scope')
@@ -114,6 +116,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
         )
         # Query database to find data_set and frames
         datasets = self.session.query(db_ops.DataSet) \
@@ -225,6 +228,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=invalid_csv_path,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
         )
 
     @patch('imaging_db.database.db_operations.session_scope')
@@ -234,6 +238,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
             override=True,
         )
         # Try uploading a second time
@@ -241,6 +246,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
             override=True,
         )
 
@@ -259,6 +265,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=config_path,
+            storage='s3',
         )
         # Query database to find data_set and file_global
         datasets = self.session.query(db_ops.DataSet) \
@@ -312,6 +319,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=config_path,
+            storage='s3',
             override=True,
         )
         # Try uploading a second time
@@ -319,6 +327,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=config_path,
+            storage='s3',
             override=True,
         )
 
@@ -342,6 +351,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=self.csv_path,
             login=self.credentials_path,
             config=self.config_path,
+            storage='s3',
             nbr_workers=-1,
         )
 
@@ -407,4 +417,5 @@ class TestDataUploader(db_basetest.DBBaseTest):
             csv=csv_path,
             login=self.credentials_path,
             config=config_path,
+            storage='s3',
         )

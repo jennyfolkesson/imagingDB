@@ -15,6 +15,7 @@ from unittest.mock import patch
 import imaging_db.images.tiffolder_splitter as tif_splitter
 import imaging_db.images.filename_parsers as file_parsers
 import imaging_db.metadata.json_operations as json_ops
+import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
 
@@ -61,15 +62,16 @@ class TestTifFolderSplitter(unittest.TestCase):
                                 ijmetadata=ijmeta,
                                 )
         # Write external metadata in dir
-        self.meta_dict = {'Summary': {'Slices': 26,
-                                      'PixelType': 'GRAY16',
-                                      'Time': '2018-11-01 19:20:34 -0700',
-                                      'z-step_um': 0.5,
-                                      'PixelSize_um': 0,
-                                      'BitDepth': 16,
-                                      'Width': 15,
-                                      'Height': 10},
-                         }
+        self.meta_dict = {
+            'Summary': {'Slices': 26,
+                        'PixelType': 'GRAY16',
+                        'Time': '2018-11-01 19:20:34 -0700',
+                        'z-step_um': 0.5,
+                        'PixelSize_um': 0,
+                        'BitDepth': 16,
+                        'Width': 15,
+                        'Height': 10},
+        }
         self.json_filename = os.path.join(self.temp_path, 'metadata.txt')
         json_ops.write_json_file(self.meta_dict, self.json_filename)
 
@@ -80,11 +82,11 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.bucket_name = 'czbiohub-imaging'
         self.conn.create_bucket(Bucket=self.bucket_name)
         # Instantiate file parser class
+        storage_class = aux_utils.get_storage_class('s3')
         self.frames_inst = tif_splitter.TifFolderSplitter(
             data_path=self.temp_path,
             storage_dir=self.storage_dir,
-            override=False,
-            file_format=".png",
+            storage_class=storage_class,
         )
         # Upload data
         self.frames_inst.get_frames_and_metadata(
