@@ -1,8 +1,8 @@
 from contextlib import contextmanager
-import importlib
 from io import StringIO
 import nose.tools
 import os
+import runpy
 import sys
 from unittest.mock import patch
 
@@ -204,9 +204,7 @@ class TestQueryData(db_basetest.DBBaseTest):
                     '--login', self.credentials_path,
                     '--start_date', '2010-05-01',
                     '--end_date', '2010-06-15']):
-            spec = importlib.util.spec_from_file_location(
-                '__main__',
+            runpy.run_path(
                 'imaging_db/cli/query_data.py',
+                run_name='__main__',
             )
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)

@@ -1,6 +1,5 @@
 import boto3
 import cv2
-import importlib
 import itertools
 import json
 from moto import mock_s3
@@ -9,6 +8,7 @@ import numpy as np
 import numpy.testing
 import os
 import pandas as pd
+import runpy
 from testfixtures import TempDirectory
 import tifffile
 from unittest.mock import patch
@@ -417,12 +417,24 @@ class TestDataUploader(db_basetest.DBBaseTest):
                     '--login', self.credentials_path,
                     '--storage', 's3',
                     '--config', self.config_path]):
-            spec = importlib.util.spec_from_file_location(
-                '__main__',
+            runpy.run_path(
                 'imaging_db/cli/data_uploader.py',
+                run_name='__main__',
             )
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+            # Query database to find data_set and frames
+            datasets = self.session.query(db_ops.DataSet) \
+                .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
+            self.assertEqual(datasets.count(), 1)
+            dataset = datasets[0]
+            self.assertTrue(dataset.frames)
+            self.assertEqual(dataset.dataset_serial, self.dataset_serial)
+            date_time = dataset.date_time
+            self.assertEqual(date_time.year, 2005)
+            self.assertEqual(date_time.month, 6)
+            self.assertEqual(date_time.day, 9)
+            self.assertEqual(dataset.microscope,
+                             "Leica microscope CAN bus adapter")
+            self.assertEqual(dataset.description, 'Testing')
 
 
 class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):

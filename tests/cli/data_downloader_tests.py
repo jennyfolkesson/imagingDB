@@ -1,7 +1,6 @@
 import boto3
 import cv2
 import glob
-import importlib
 import itertools
 from moto import mock_s3
 import nose.tools
@@ -9,6 +8,7 @@ import numpy as np
 import numpy.testing
 import os
 import pandas as pd
+import runpy
 from testfixtures import TempDirectory
 import tifffile
 from unittest.mock import patch
@@ -395,12 +395,20 @@ class TestDataDownloader(db_basetest.DBBaseTest):
                     '--dest', dest_dir,
                     '--storage', 's3',
                     '--login', self.credentials_path]):
-            spec = importlib.util.spec_from_file_location(
-                '__main__',
+            runpy.run_path(
                 'imaging_db/cli/data_downloader.py',
+                run_name='__main__',
             )
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+            # Check that files are there
+            dest_files = os.listdir(
+                dest_dir + '/FRAMES-2005-06-09-20-00-00-1000',
+            )
+            self.assertTrue('frames_meta.csv' in dest_files)
+            self.assertTrue('global_metadata.json' in dest_files)
+            for c in range(self.nbr_channels):
+                for z in range(self.nbr_slices):
+                    im_name = 'im_c00{}_z00{}_t000_p000.png'.format(c, z)
+                    self.assertTrue(im_name in dest_files)
 
 
 class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
