@@ -4,24 +4,31 @@
 # Imaging Database
 
 This is a data management system intended for microscopy images. It consists of two components:
-* **File storage**, which has two components: an AWS S3 bucket named 'czbiohub-imaging', as
-well as local storage which is assumed to be mounted on the machine you're running imagingDB on. 
+* **File storage**: Image data is stored both in an AWS S3 bucket named 'czbiohub-imaging', as
+well as local storage at the Biohub 
+(an [IBM ESS](https://www.ibm.com/us-en/marketplace/ibm-elastic-storage-server)) which is assumed to be mounted on the machine 
+you're running imagingDB on. The idea is to have fast access to data with the local storage,
+while still having offsite backup. The data is synced automatically between local storage and S3
+using [AWS DataSync](https://aws.amazon.com/datasync/) on a daily basis.
 If repurposing this repo, make sure to change storage access points in the DataStorage class.
-* **A database**. We're using an AWS PostgreSQL RDS database, and SQLAchemy ORM for database
-calls using Python. 
+* **A database**. We're using an []AWS PostgreSQL RDS](https://aws.amazon.com/rds/postgresql/) 
+database, and SQLAchemy for interacting with the database using Python. 
 
 ![imagingDB layout](imagingDB_overview.png?raw=true "Title")
 
 A dataset can consist of up to five dimensional image data: x, y, z, channels, timepoints,
-and positions (FOVs), as well as associated metadat.
+and positions (FOVs), as well as associated metadata.
 Each dataset is assumed to have an unique identifier in the form
 
 \<ID>-YYYY-MM-DD-HH-MM-SS-\<XXXX>
 
-where ID is a project id (e.g. 'ISP' or 'ML'), followed by a timestamp, and the last
+where ID is a project ID (e.g. 'ISP' or 'ML'), followed by a timestamp, and the last
 section is a four digit serial number.
 
-Below is a visualization of the database schema, generated using [eralchemy](https://github.com/Alexis-benoist/eralchemy). The arch on the top of the data_set table should connect parent_id with id, and it also doesn't show foreign keys clearly, other than that it gives an overview of schema. 
+Below is a visualization of the database schema, generated using 
+[eralchemy](https://github.com/Alexis-benoist/eralchemy). 
+The arch on the top of the data_set table should connect parent_id with id, and it also doesn't 
+show foreign keys clearly, other than that it gives an overview of schema. 
 
 ![Database schema](db_schema.png?raw=true "Title")
 
@@ -54,6 +61,9 @@ The data uploader CLI takes the following arguments:
     * _dataset_id:_ The unique dataset identifier (required)
     * _file_name:_ Full path to the file/directory to upload (required)
     * _description:_ Description of the dataset (string, optional)
+    * _parent_dataset_id:_ If the dataset is related to another dataset in the database,
+    you can specify the unique parent dataset ID and that will create an internal reference
+    in the data_set table (unfortunately not very clearly depicted in the database schema). (optional)
     * _positions:_ [list of ints] Positions in file directory that belong to the same
     dataset ID. Optional for ome_tif uploads only.
 * **login:** a json file containing database login credentials (see db_credentials.json)
@@ -95,18 +105,18 @@ python imaging_db/cli/data_uploader.py --csv files_for_upload.csv --login db_cre
 
 The data_downloader CLI takes the following command line inputs: 
 
-* **login:** a JSON file with DB login credentials
-* **dest:** a destination folder where the data will be downloaded
-* **storage:** (optional) 'local' (default) or 's3'.
-* **storage_access:** (optional) If using a different storage than defaults, specify here.
+* **login:** A JSON file with DB login credentials
+* **dest:** A destination directory where the data will be downloaded
+* **storage:**  Which storage to get data from: 'local' (default) or 's3'. (optional)
+* **storage_access:** If using a different storage access point than defaults, specify here.
 Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)
-for local storage, and czbiohub-imaging (bucket name) for S3 storage.
+for local storage, and czbiohub-imaging (bucket name) for S3 storage. (optional)
 * **id:** a unique dataset identifier
-* **metadata:** (default True) For files split to frames only. Writes metadata
-            global metadata in json, local for each frame in csv.
+* **metadata:** For files split to frames only. Writes global metadata in json, and
+ local metadata for each frame in a csv in the destination directory. (default True)
 * **no-metadata:** Downloads image data only.
 * **no-download:** Downloads metadata only.
-* **download:** (default True) For Frames, there's the option of only retrieving the metadata files  
+* **download:** For Frames, there's the option of only retrieving the metadata files. (default True)
 * **c, channels:** [tuple] Download only specified channel names/indices if tuple contains
  strings/integers (optional)
 * **z, slices:** [tuple] Download only specified slice indices (optional)
@@ -121,19 +131,19 @@ python imaging_db/cli/data_downloader.py --id ID-2018-04-05-00-00-00-0001 --dest
 The query_data CLI takes the following command line inputs: 
 
 * **login:** a JSON file containing database login credentials
-* **project_id:** (optional) First part of dataset_serial containing project ID (e.g. 'ML')
-* **microscope:** (optional) Any string subset from microscope column in data_set table
-* **start_date:** (optional) Format YYYY-MM-DD. Find >= dates in date_time column of data_set table
-* **end_date:** (optional) Format YYYY-MM-DD. Find <= dates in date_time column of data_set table
-* **description:** (optional) Find substring in description column of data_set table
+* **project_id:** First part of dataset_serial containing project ID (e.g. 'ML'). (optional)
+* **microscope:** Any string subset from microscope column in data_set table. (optional)
+* **start_date:** Format YYYY-MM-DD. Find >= dates in date_time column of data_set table. (optional)
+* **end_date:** Format YYYY-MM-DD. Find <= dates in date_time column of data_set table. (optional)
+* **description:** Find substring in description column of data_set table. (optional)
 ```buildoutcfg
 python imaging_db/cli/query_data.py --login db_credentials.json --project_id <str> --start_date <start date> --end_date <end date>
 ```
 
-
 ### Prerequisites
 
-Python requirements can be found in the file requirements.txt
+Python requirements can be found in the file **requirements.txt** if you want to do a pip install.
+There's also a **conda_environment.yml** file if you'd prefer to create a conda environment.
 
 ####  Data Storage Locations
 * Local storage IBM ESS: You will have access to local storage if you're at the Biohub or

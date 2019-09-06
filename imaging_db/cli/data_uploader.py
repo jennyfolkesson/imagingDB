@@ -198,8 +198,6 @@ def upload_data_and_update_db(csv,
             )
             # Get kwargs if any
             kwargs = {}
-            print('row----------')
-            print(row)
             if 'positions' in row:
                 positions = row['positions']
                 if not pd.isna(positions):
@@ -210,7 +208,6 @@ def upload_data_and_update_db(csv,
                 filename_parser = config_json['filename_parser']
                 kwargs['filename_parser'] = filename_parser
             # Extract metadata and split file into frames
-            print(kwargs)
             frames_inst.get_frames_and_metadata(**kwargs)
 
             # Add frames metadata to database
