@@ -42,13 +42,13 @@ def parse_args():
         help="Full path to file containing JSON with upload configurations",
     )
     parser.add_argument(
-        '--override',
-        dest="override",
+        '--overwrite',
+        dest="overwrite",
         action="store_true",
         help="In case of interruption, you can raise this flag and imageDB"
              "will continue upload where it stopped. Use with caution.",
     )
-    parser.set_defaults(override=False)
+    parser.set_defaults(overwrite=False)
     parser.add_argument(
         '--storage',
         type=str,
@@ -79,7 +79,7 @@ def upload_data_and_update_db(csv,
                               nbr_workers=None,
                               storage='local',
                               storage_access=None,
-                              override=False):
+                              overwrite=False):
     """
     Split, crop volumes and flatfield correct images in input and target
     directories. Writes output as npy files for faster reading while training.
@@ -112,7 +112,7 @@ def upload_data_and_update_db(csv,
     :param str/None storage_access: If not using predefined storage locations,
             this parameter refers to mount_point for local storage and
             bucket_name for S3 storage.
-    :param bool override: Use with caution if your upload if your upload was
+    :param bool overwrite: Use with caution if your upload if your upload was
             interrupted and you want to overwrite existing data in database
             and storage
     """
@@ -172,7 +172,7 @@ def upload_data_and_update_db(csv,
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        if not override:
+        if not overwrite:
             with db_ops.session_scope(db_connection) as session:
                 db_inst.assert_unique_id(session)
         # Check for parent dataset
@@ -192,7 +192,7 @@ def upload_data_and_update_db(csv,
                 storage_dir=storage_dir,
                 storage_class=storage_class,
                 storage_access=storage_access,
-                override=override,
+                overwrite=overwrite,
                 file_format=FRAME_FILE_FORMAT,
                 nbr_workers=nbr_workers,
             )
@@ -234,7 +234,7 @@ def upload_data_and_update_db(csv,
                 storage_dir=storage_dir,
                 access_point=storage_access,
             )
-            if not override:
+            if not overwrite:
                 data_uploader.assert_unique_id()
             try:
                 data_uploader.upload_file(file_path=row.file_name)
@@ -272,5 +272,5 @@ if __name__ == '__main__':
         nbr_workers=args.nbr_workers,
         storage=args.storage,
         storage_access=args.storage_access,
-        override=args.override,
+        overwrite=args.overwrite,
     )

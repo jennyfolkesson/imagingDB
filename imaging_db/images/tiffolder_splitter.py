@@ -20,7 +20,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                  storage_dir,
                  storage_class,
                  storage_access=None,
-                 override=False,
+                 overwrite=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
@@ -29,7 +29,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
                          storage_dir=storage_dir,
                          storage_class=storage_class,
                          storage_access=storage_access,
-                         override=override,
+                         overwrite=overwrite,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
                          int2str_len=int2str_len)

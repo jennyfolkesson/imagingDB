@@ -67,15 +67,11 @@ class TestDataUploader(db_basetest.DBBaseTest):
         self.csv_path = os.path.join(self.temp_path, "test_upload.csv")
         upload_csv.to_csv(self.csv_path)
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_tif_id.json',
         )
 
@@ -100,7 +96,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             self.assertEqual(parsed_args.csv, self.csv_path)
             self.assertEqual(parsed_args.login, 'test_login.json')
             self.assertEqual(parsed_args.config, 'test_config.json')
-            self.assertFalse(parsed_args.override)
+            self.assertFalse(parsed_args.overwrite)
             self.assertEqual(parsed_args.storage, 'local')
             self.assertIsNone(parsed_args.storage_access)
             self.assertEqual(parsed_args.nbr_workers, 5)
@@ -195,7 +191,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
         for i, (c, z) in enumerate(it):
             im_name = 'im_c00{}_z00{}_t000_p000.png'.format(c, z)
-            key = "/".join([self.s3_dir, im_name])
+            key = os.path.join(self.s3_dir, im_name)
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image
@@ -235,7 +231,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             storage='s3',
-            override=True,
+            overwrite=True,
         )
         # Try uploading a second time
         data_uploader.upload_data_and_update_db(
@@ -243,7 +239,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             storage='s3',
-            override=True,
+            overwrite=True,
         )
 
     @patch('imaging_db.database.db_operations.session_scope')
@@ -252,9 +248,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         mock_session.return_value.__enter__.return_value = self.session
 
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(
@@ -294,7 +288,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         self.assertEqual(file_global.sha256, sha256)
         # Check that file has been uploaded
         s3_client = boto3.client('s3')
-        key = "/".join([expected_s3, "A1_2_PROTEIN_test.tif"])
+        key = os.path.join(expected_s3, "A1_2_PROTEIN_test.tif")
         # Just check that the file is there, we've dissected it before
         response = s3_client.list_objects_v2(Bucket=self.bucket_name,
                                              Prefix=key)
@@ -306,9 +300,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         mock_session.return_value.__enter__.return_value = self.session
 
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(
@@ -316,7 +308,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=config_path,
             storage='s3',
-            override=True,
+            overwrite=True,
         )
         # Try uploading a second time
         data_uploader.upload_data_and_update_db(
@@ -324,7 +316,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=config_path,
             storage='s3',
-            override=True,
+            overwrite=True,
         )
 
     @nose.tools.raises(AssertionError)
@@ -395,9 +387,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         csv_path = os.path.join(self.temp_path, "test_ometif_upload.csv")
         upload_csv.to_csv(csv_path)
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_ome_tiff.json',
         )
         # Upload data
@@ -484,15 +474,11 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
         self.csv_path = os.path.join(self.temp_path, "test_upload.csv")
         upload_csv.to_csv(self.csv_path)
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_tif_id.json',
         )
 
@@ -608,7 +594,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             storage_access=self.mount_point,
-            override=True,
+            overwrite=True,
         )
         # Try uploading a second time
         data_uploader.upload_data_and_update_db(
@@ -616,7 +602,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=self.config_path,
             storage_access=self.mount_point,
-            override=True,
+            overwrite=True,
         )
 
     @patch('imaging_db.database.db_operations.session_scope')
@@ -625,9 +611,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
         mock_session.return_value.__enter__.return_value = self.session
 
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(
@@ -675,9 +659,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
         mock_session.return_value.__enter__.return_value = self.session
 
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(
@@ -685,7 +667,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=config_path,
             storage_access=self.mount_point,
-            override=True,
+            overwrite=True,
         )
         # Try uploading a second time
         data_uploader.upload_data_and_update_db(
@@ -693,7 +675,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             config=config_path,
             storage_access=self.mount_point,
-            override=True,
+            overwrite=True,
         )
 
     @patch('imaging_db.database.db_operations.session_scope')
@@ -727,9 +709,8 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
                             extratags=extra_tags,
                             )
 
-        dir_name = os.path.dirname(__file__)
         schema_file_path = os.path.realpath(
-            os.path.join(dir_name, '..', '..', 'metadata_schema.json'),
+            os.path.join(self.main_dir, 'metadata_schema.json'),
         )
         # Create csv file for upload
         upload_dict = {
@@ -743,9 +724,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
         csv_path = os.path.join(self.temp_path, "test_ometif_upload.csv")
         upload_csv.to_csv(csv_path)
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_ome_tiff.json',
         )
         # Upload data

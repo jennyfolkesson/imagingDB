@@ -40,8 +40,9 @@ def parse_args():
         '--storage',
         type=str,
         default='local',
+        choices=['s3', 'local'],
         help="Optional: Specify 'local' (default) or 's3'."
-             "Uploads to local storage will be synced to S3 daily.",
+             "Uploads to local storage will be synced to S3 daily and vice versa.",
     )
     parser.add_argument(
         '--storage_access',
@@ -55,7 +56,7 @@ def parse_args():
         '--nbr_workers',
         type=int,
         default=None,
-        help="Number of treads to increase download speed"
+        help="Number of threads to increase download speed"
     )
     parser.add_argument(
         '-p', '--positions',

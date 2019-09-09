@@ -146,7 +146,7 @@ class LocalStorage(data_storage.DataStorage):
         # Create directory for file
         os.makedirs(self.id_storage_path, exist_ok=True)
 
-        file_name = file_path.split("/")[-1]
+        file_name = os.path.basename(file_path)
         save_path = self.get_storage_path(file_name)
         shutil.copy(file_path, save_path)
 

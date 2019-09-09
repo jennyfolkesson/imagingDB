@@ -39,7 +39,8 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock S3 dir
-        self.frames_storage_dir = "raw_frames/FRAMES-2005-06-09-20-00-00-1000"
+        self.dataset_serial = 'FRAMES-2005-06-09-20-00-00-1000'
+        self.frames_storage_dir = os.path.join('raw_frames', self.dataset_serial)
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -57,7 +58,6 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.im,
             description=self.description,
         )
-        self.dataset_serial = 'FRAMES-2005-06-09-20-00-00-1000'
         upload_csv = pd.DataFrame(
             columns=['dataset_id', 'file_name', 'description'],
         )
@@ -73,15 +73,11 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         )
         upload_csv.to_csv(self.csv_path_frames)
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_tif_id.json',
         )
         # Upload frames
@@ -92,8 +88,8 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             storage='s3',
         )
         # Upload file
-        self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
-        self.file_storage_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
+        self.dataset_serial_file = 'FILE-2005-06-01-01-00-00-1000'
+        self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
             self.temp_path,
             "test_upload_file.csv",
@@ -102,9 +98,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(
@@ -400,9 +394,10 @@ class TestDataDownloader(db_basetest.DBBaseTest):
                 run_name='__main__',
             )
             # Check that files are there
-            dest_files = os.listdir(
-                dest_dir + '/FRAMES-2005-06-09-20-00-00-1000',
-            )
+            dest_files = os.listdir(os.path.join(
+                dest_dir,
+                self.dataset_serial,
+            ))
             self.assertTrue('frames_meta.csv' in dest_files)
             self.assertTrue('global_metadata.json' in dest_files)
             for c in range(self.nbr_channels):
@@ -432,7 +427,8 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock storage dir
-        self.frames_storage_dir = "raw_frames/FRAMES-2005-06-09-20-00-00-1000"
+        self.dataset_serial = 'FRAMES-2005-06-09-20-00-00-1000'
+        self.frames_storage_dir = os.path.join('raw_frames', self.dataset_serial)
         # Temporary file with 6 frames, tifffile stores channels first
         self.im = 50 * np.ones((6, 10, 15), dtype=np.uint16)
         self.im[0, :5, 3:12] = 50000
@@ -447,7 +443,6 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             self.im,
             description=self.description,
         )
-        self.dataset_serial = 'FRAMES-2005-06-09-20-00-00-1000'
         upload_csv = pd.DataFrame(
             columns=['dataset_id', 'file_name', 'description'],
         )
@@ -463,15 +458,11 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         )
         upload_csv.to_csv(self.csv_path_frames)
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_tif_id.json',
         )
         # Upload frames
@@ -483,7 +474,7 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         )
         # Upload file
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
-        self.file_storage_dir = "raw_files/FILE-2005-06-09-20-00-00-1000"
+        self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
             self.temp_path,
             "test_upload_file.csv",
@@ -492,9 +483,7 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'config_file.json',
         )
         data_uploader.upload_data_and_update_db(

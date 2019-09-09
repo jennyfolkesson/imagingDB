@@ -12,7 +12,7 @@ class FileSplitter(metaclass=ABCMeta):
                  storage_dir,
                  storage_class,
                  storage_access=None,
-                 override=False,
+                 overwrite=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
@@ -23,7 +23,7 @@ class FileSplitter(metaclass=ABCMeta):
         :param str/None storage_access: If not using predefined storage locations,
             this parameter refers to mount_point for local storage and
             bucket_name for S3 storage.
-        :param bool override: Will not continue DataStorage if dataset is already
+        :param bool overwrite: Will not continue DataStorage if dataset is already
             present in storage.
         :param str file_format: Image file format (preferred is png)
         :param int int2str_len: How many integers will be added to each index
@@ -36,7 +36,7 @@ class FileSplitter(metaclass=ABCMeta):
             nbr_workers=nbr_workers,
             access_point=storage_access,
         )
-        if not override:
+        if not overwrite:
             self.data_uploader.assert_unique_id()
 
         self.file_format = file_format

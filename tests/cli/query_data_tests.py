@@ -38,9 +38,7 @@ class TestQueryData(db_basetest.DBBaseTest):
         super().setUp()
         # Database credentials file
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         # Add some datasets to session

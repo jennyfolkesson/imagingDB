@@ -60,6 +60,15 @@ class S3Storage(data_storage.DataStorage):
         else:
             return False
 
+    def _get_key(self, file_name):
+        """
+        Construct key from storage dir and file name
+
+        :param str file_name: File name without path
+        :return str key: File name with storage path
+        """
+        return os.path.join(self.storage_dir, file_name)
+
     def upload_frames(self, file_names, im_stack, file_format=".png"):
         """
         Upload all frames to S3 using threading
@@ -77,7 +86,7 @@ class S3Storage(data_storage.DataStorage):
         keys = []
         for i, file_name in enumerate(file_names):
             # Create key
-            key = "/".join([self.storage_dir, file_name])
+            key = self._get_key(file_name)
             # Make sure image doesn't already exist
             if self.nonexistent_storage_path(storage_path=key):
                 # Serialize image
@@ -120,7 +129,7 @@ class S3Storage(data_storage.DataStorage):
         :param np.array im: 2D image
         :param str file_format: File format for serialization
         """
-        key = "/".join([self.storage_dir, im_name])
+        key = self._get_key(im_name)
         # Create new client
         s3_client = boto3.client('s3')
         # Make sure image doesn't already exist
@@ -144,12 +153,11 @@ class S3Storage(data_storage.DataStorage):
         # ID should be unique, make sure it doesn't already exist
         self.assert_unique_id()
 
-        file_name = file_path.split("/")[-1]
-        key = "/".join([self.storage_dir, file_name])
+        file_name = os.path.basename(file_path)
         self.s3_client.upload_file(
             file_path,
             self.bucket_name,
-            key,
+            self._get_key(file_name),
         )
 
     def get_im(self, file_name):
@@ -160,10 +168,9 @@ class S3Storage(data_storage.DataStorage):
         :return np.array im: 2D image
         """
         s3_client = boto3.client('s3')
-        key = "/".join([self.storage_dir, file_name])
         byte_str = s3_client.get_object(
             Bucket=self.bucket_name,
-            Key=key,
+            Key=self._get_key(file_name),
         )['Body'].read()
         # Construct an array from the bytes and decode image
         return im_utils.deserialize_im(byte_str)
@@ -180,10 +187,9 @@ class S3Storage(data_storage.DataStorage):
         """
         # Create a new client
         s3_client = boto3.client('s3')
-        key = "/".join([self.storage_dir, file_name])
         dest_path = os.path.join(dest_dir, file_name)
         s3_client.download_file(
             self.bucket_name,
-            key,
+            self._get_key(file_name),
             dest_path,
         )

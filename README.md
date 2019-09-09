@@ -11,7 +11,7 @@ you're running imagingDB on. The idea is to have fast access to data with the lo
 while still having offsite backup. The data is synced automatically between local storage and S3
 using [AWS DataSync](https://aws.amazon.com/datasync/) on a daily basis.
 If repurposing this repo, make sure to change storage access points in the DataStorage class.
-* **A database**. We're using an []AWS PostgreSQL RDS](https://aws.amazon.com/rds/postgresql/) 
+* **A database**. We're using an [AWS PostgreSQL RDS](https://aws.amazon.com/rds/postgresql/) 
 database, and SQLAchemy for interacting with the database using Python. 
 
 ![imagingDB layout](imagingDB_overview.png?raw=true "Title")
