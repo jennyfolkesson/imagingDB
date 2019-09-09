@@ -72,6 +72,10 @@ def get_storage_class(storage_type):
     :param str storage_type: What format your files are stored in
     :return class storage_class: Filestorage class
     """
+    storage_type = storage_type.lower()
+    assert storage_type in {'local', 's3'},\
+        "storage should be local or s3, not {}".format(storage_type)
+
     class_dict = {'s3': 'S3Storage',
                   'local': 'LocalStorage',
                   }
