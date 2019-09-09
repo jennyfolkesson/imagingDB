@@ -7,7 +7,6 @@ import tifffile
 
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.images.filename_parsers as file_parsers
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.meta_utils as meta_utils
 
@@ -18,15 +17,19 @@ class TifFolderSplitter(file_splitter.FileSplitter):
     """
     def __init__(self,
                  data_path,
-                 s3_dir,
-                 override=False,
+                 storage_dir,
+                 storage_class,
+                 storage_access=None,
+                 overwrite=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
         
-        super().__init__(data_path,
-                         s3_dir,
-                         override=override,
+        super().__init__(data_path=data_path,
+                         storage_dir=storage_dir,
+                         storage_class=storage_class,
+                         storage_access=storage_access,
+                         overwrite=overwrite,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
                          int2str_len=int2str_len)
@@ -34,12 +37,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         self.channel_names = []
 
         global data_uploader
-        data_uploader = s3_storage.DataStorage(
-            s3_dir=self.s3_dir,
-            nbr_workers=self.nbr_workers,
-        )
-        if not override:
-            data_uploader.assert_unique_id()
+        data_uploader = self.data_uploader
 
     def set_frame_info(self, meta_summary):
         """
@@ -57,9 +55,8 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         elif meta_summary["BitDepth"] == 8:
             self.bit_depth = "uint8"
         else:
-            print("Bit depth must be 16 or 8, not {}".format(
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(
                 meta_summary["BitDepth"]))
-            raise ValueError
 
     def _set_frame_meta(self, parse_func, file_name):
         """
@@ -87,7 +84,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         :return str sha256: Checksum for image
         :return dict dict_i: JSON metadata for frame
         """
-        frame_path, file_name = frame_file_tuple
+        frame_path, frame_name = frame_file_tuple
         im = tifffile.TiffFile(frame_path)
         tiftags = im.pages[0].tags
         # Get all frame specific metadata
@@ -99,7 +96,7 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         sha256 = meta_utils.gen_sha256(im)
         # Upload to S3 with global client
         data_uploader.upload_im(
-            file_name=file_name,
+            im_name=frame_name,
             im=im,
             file_format=self.file_format,
         )

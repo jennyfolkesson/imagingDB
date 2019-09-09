@@ -6,7 +6,6 @@ import pandas as pd
 
 import imaging_db.utils.cli_utils as cli_utils
 import imaging_db.database.db_operations as db_ops
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.db_utils as db_utils
@@ -43,13 +42,28 @@ def parse_args():
         help="Full path to file containing JSON with upload configurations",
     )
     parser.add_argument(
-        '--override',
-        dest="override",
+        '--overwrite',
+        dest="overwrite",
         action="store_true",
         help="In case of interruption, you can raise this flag and imageDB"
              "will continue upload where it stopped. Use with caution.",
     )
-    parser.set_defaults(override=False)
+    parser.set_defaults(overwrite=False)
+    parser.add_argument(
+        '--storage',
+        type=str,
+        default='local',
+        help="Optional: Specify 'local' (default) or 's3'."
+             "Uploads to local storage will be synced to S3 daily.",
+    )
+    parser.add_argument(
+        '--storage_access',
+        type=str,
+        default=None,
+        help="If using a different storage than defaults, specify here."
+             "Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)"
+             "for local storage, czbiohub-imaging (bucket name) for S3 storage."
+    )
     parser.add_argument(
         '--nbr_workers',
         type=int,
@@ -63,7 +77,9 @@ def upload_data_and_update_db(csv,
                               login,
                               config,
                               nbr_workers=None,
-                              override=False):
+                              storage='local',
+                              storage_access=None,
+                              overwrite=False):
     """
     Split, crop volumes and flatfield correct images in input and target
     directories. Writes output as npy files for faster reading while training.
@@ -83,10 +99,20 @@ def upload_data_and_update_db(csv,
             str upload_type: Specify if the file should be split prior to upload
                 Valid options: 'frames' or 'file'
             str frames_format: Which file splitter class to use.
-                Valid options: 'ome_tiff', 'tiffolder', 'tifvideo'
+                Valid options:
+                'ome_tiff' needs MicroManagerMetadata tag for each frame for metadata
+                'tif_folder' when each file is already an individual frame
+                and relies on MicroManager metadata
+                'tif_id' needs ImageDescription tag in first frame page for metadata
             str json_meta: If slice, give full path to json metadata schema
     :param int, None nbr_workers: Number of workers for parallel uploads
-    :param bool override: Use with caution if your upload if your upload was
+    :param str storage: 'local' (default) - data will be stored locally and
+                synced to S3 the same day. Or 'S3' - data will be uploaded
+                directly to S3 then synced with local storage daily.
+    :param str/None storage_access: If not using predefined storage locations,
+            this parameter refers to mount_point for local storage and
+            bucket_name for S3 storage.
+    :param bool overwrite: Use with caution if your upload if your upload was
             interrupted and you want to overwrite existing data in database
             and storage
     """
@@ -112,6 +138,8 @@ def upload_data_and_update_db(csv,
     if nbr_workers is not None:
         assert nbr_workers > 0, \
             "Nbr of worker must be >0, not {}".format(nbr_workers)
+    # Import local or S3 storage class
+    storage_class = aux_utils.get_storage_class(storage_type=storage)
 
     # Make sure microscope is a string
     microscope = None
@@ -136,15 +164,15 @@ def upload_data_and_update_db(csv,
 
         # Get S3 directory based on upload type
         if upload_type == "frames":
-            s3_dir = "/".join([FRAME_FOLDER_NAME, dataset_serial])
+            storage_dir = "/".join([FRAME_FOLDER_NAME, dataset_serial])
         else:
-            s3_dir = "/".join([FILE_FOLDER_NAME, dataset_serial])
+            storage_dir = "/".join([FILE_FOLDER_NAME, dataset_serial])
         # Instantiate database operations class
         db_inst = db_ops.DatabaseOperations(
             dataset_serial=dataset_serial,
         )
         # Make sure dataset is not already in database
-        if not override:
+        if not overwrite:
             with db_ops.session_scope(db_connection) as session:
                 db_inst.assert_unique_id(session)
         # Check for parent dataset
@@ -161,8 +189,10 @@ def upload_data_and_update_db(csv,
             # Instantiate splitter class
             frames_inst = splitter_class(
                 data_path=row.file_name,
-                s3_dir=s3_dir,
-                override=override,
+                storage_dir=storage_dir,
+                storage_class=storage_class,
+                storage_access=storage_access,
+                overwrite=overwrite,
                 file_format=FRAME_FILE_FORMAT,
                 nbr_workers=nbr_workers,
             )
@@ -200,13 +230,14 @@ def upload_data_and_update_db(csv,
             # Just upload file without opening it
             assert os.path.isfile(row.file_name), \
                 "File doesn't exist: {}".format(row.file_name)
-            data_uploader = s3_storage.DataStorage(
-                s3_dir=s3_dir,
+            data_uploader = storage_class(
+                storage_dir=storage_dir,
+                access_point=storage_access,
             )
-            if not override:
+            if not overwrite:
                 data_uploader.assert_unique_id()
             try:
-                data_uploader.upload_file(file_name=row.file_name)
+                data_uploader.upload_file(file_path=row.file_name)
                 print("File {} uploaded to S3".format(row.file_name))
             except AssertionError as e:
                 print("File already on S3, moving on to DB entry. {}".format(e))
@@ -220,7 +251,7 @@ def upload_data_and_update_db(csv,
                     db_inst.insert_file(
                         session=session,
                         description=description,
-                        s3_dir=s3_dir,
+                        storage_dir=storage_dir,
                         file_name=file_name,
                         global_json_meta=global_json,
                         microscope=microscope,
@@ -239,5 +270,7 @@ if __name__ == '__main__':
         login=args.login,
         config=args.config,
         nbr_workers=args.nbr_workers,
-        override=args.override,
+        storage=args.storage,
+        storage_access=args.storage_access,
+        overwrite=args.overwrite,
     )

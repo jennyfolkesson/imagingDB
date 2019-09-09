@@ -22,7 +22,7 @@ DF_NAMES = ["channel_idx",
             "sha256"]
 
 
-def make_dataframe(nbr_frames, col_names=DF_NAMES):
+def make_dataframe(nbr_frames=None, col_names=DF_NAMES):
     """
     Create empty pandas dataframe given indices and column names
 
@@ -49,7 +49,7 @@ def validate_global_meta(global_meta):
     :param dict global_meta: Global frames metadata
     :raise AssertionError: if not all keys are present
     """
-    keys = ["s3_dir",
+    keys = ["storage_dir",
             "nbr_frames",
             "im_width",
             "im_height",

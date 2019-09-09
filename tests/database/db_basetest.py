@@ -20,10 +20,13 @@ class DBBaseTest(unittest.TestCase):
     def setUp(self):
         # Credentials URI which can be used to connect
         # to postgres Docker container
-        credentials_path = os.path.join(
+        self.main_dir = os.path.join(
             os.path.dirname(__file__),
             '..',
             '..',
+        )
+        credentials_path = os.path.join(
+            self.main_dir,
             'db_credentials.json',
         )
         self.credentials_str = db_utils.get_connection_str(credentials_path)

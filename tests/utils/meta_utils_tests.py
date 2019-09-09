@@ -28,14 +28,14 @@ def test_make_empty_dataframe():
         "file_name",
         "pos_idx",
         "sha256"]
-    frames_meta = meta_utils.make_dataframe(nbr_frames=None)
+    frames_meta = meta_utils.make_dataframe()
     nose.tools.assert_equal(expected_names, list(frames_meta))
     nose.tools.assert_true(frames_meta.empty)
 
 
 def test_validate_global_meta():
     global_meta = {
-        "s3_dir": "dir_name",
+        "storage_dir": "dir_name",
         "nbr_frames": 5,
         "im_height": 256,
         "im_width": 256,
@@ -92,7 +92,7 @@ def test_gen_sha256_file():
 @nose.tools.raises(AssertionError)
 def test_validate_global_meta_invalid():
     global_meta = {
-        "s3_dir": "dir_name",
+        "storage_dir": "dir_name",
         "nbr_frames": 5,
         "im_height": 256,
         "im_width": 256,
@@ -109,6 +109,6 @@ def test_validate_global_meta_invalid():
 @nose.tools.raises(AssertionError)
 def test_validate_global_meta_missing():
     global_meta = {
-        "s3_dir": "dir_name",
+        "storage_dir": "dir_name",
     }
     meta_utils.validate_global_meta(global_meta)

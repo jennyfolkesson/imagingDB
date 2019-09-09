@@ -191,7 +191,7 @@ class DatabaseOperations:
         )
         # Add global frame information
         new_frames_global = FramesGlobal(
-            s3_dir=global_meta["s3_dir"],
+            s3_dir=global_meta["storage_dir"],
             nbr_frames=global_meta["nbr_frames"],
             im_width=global_meta["im_width"],
             im_height=global_meta["im_height"],
@@ -201,7 +201,6 @@ class DatabaseOperations:
             nbr_positions=global_meta["nbr_positions"],
             im_colors=global_meta["im_colors"],
             bit_depth=global_meta["bit_depth"],
-
             metadata_json=global_json_meta,
             data_set=new_dataset,
         )
@@ -226,7 +225,7 @@ class DatabaseOperations:
     def insert_file(self,
                     session,
                     description,
-                    s3_dir,
+                    storage_dir,
                     file_name,
                     global_json_meta,
                     microscope,
@@ -237,7 +236,7 @@ class DatabaseOperations:
 
         :param session: SQLAlchemy session
         :param str description: Short description of file
-        :param str s3_dir: Folder in S3 bucket where data is stored
+        :param str storage_dir: Directory where data is stored
         :param str file_name: Name of file
         :param global_json_meta: Arbitrary metadata fields for file
         :param str microscope: microscope name
@@ -265,7 +264,7 @@ class DatabaseOperations:
         )
         # Add s3 location
         new_file_global = FileGlobal(
-            s3_dir=s3_dir,
+            s3_dir=storage_dir,
             file_name=file_name,
             metadata_json=global_json_meta,
             data_set=new_dataset,
@@ -293,7 +292,7 @@ class DatabaseOperations:
                 (use channel names (e.g., 'Cy3') or integer indices) to be fetched.
         :param [None, tuple] slices: a tuple containing slice indices to
                 be fetched. Use None to get all slices.
-        :return str s3_dir: Folder name containing file(s) on S3
+        :return str storage_dir: Folder name containing file(s) in storage
         :return list of strs file_names: List of file names for given dataset
         """
         # Check if ID already exist
@@ -322,13 +321,13 @@ class DatabaseOperations:
                 channels=channels,
                 slices=slices,
             )
-            s3_dir = sliced_frames[0].frames_global.s3_dir
+            storage_dir = sliced_frames[0].frames_global.s3_dir
 
             file_names = []
             for f in sliced_frames:
                 file_names.append(f.file_name)
 
-            return s3_dir, file_names
+            return storage_dir, file_names
 
     @staticmethod
     def _slice_frames(frames,
@@ -416,7 +415,7 @@ class DatabaseOperations:
         """
         # Collect global metadata that can be used to instantiate im_stack
         global_meta = {
-            "s3_dir": frames[0].frames_global.s3_dir,
+            "storage_dir": frames[0].frames_global.s3_dir,
             "nbr_frames": frames[0].frames_global.nbr_frames,
             "im_width": frames[0].frames_global.im_width,
             "im_height": frames[0].frames_global.im_height,

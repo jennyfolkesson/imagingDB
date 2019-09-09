@@ -63,3 +63,28 @@ def get_splitter_class(frames_format):
         class_dict[frames_format],
     )
     return splitter_class
+
+
+def get_storage_class(storage_type):
+    """
+    Given storage_type, 'local' or 's3', import filestorage class.
+
+    :param str storage_type: What format your files are stored in
+    :return class storage_class: Filestorage class
+    """
+    storage_type = storage_type.lower()
+    assert storage_type in {'local', 's3'},\
+        "storage should be local or s3, not {}".format(storage_type)
+
+    class_dict = {'s3': 'S3Storage',
+                  'local': 'LocalStorage',
+                  }
+    module_dict = {'s3': 'filestorage.s3_storage',
+                   'local': 'filestorage.local_storage',
+                   }
+    # Dynamically import class
+    storage_class = import_class(
+        module_dict[storage_type],
+        class_dict[storage_type],
+    )
+    return storage_class

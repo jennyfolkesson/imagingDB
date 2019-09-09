@@ -60,8 +60,7 @@ def validate_schema(json_object, schema):
         try:
             schema_object = globals()[schema]
         except KeyError as e:
-            print(e)
-            raise
+            raise KeyError(e)
     else:
         raise AssertionError("Schema neither string or dict")
 

@@ -42,9 +42,9 @@ class FramesGlobal(Base):
                  im_height,
                  nbr_slices,
                  nbr_channels,
-                 im_colors,
                  nbr_timepoints,
                  nbr_positions,
+                 im_colors,
                  bit_depth,
                  metadata_json,
                  data_set):
@@ -54,9 +54,9 @@ class FramesGlobal(Base):
         self.im_height = im_height
         self.nbr_slices = nbr_slices
         self.nbr_channels = nbr_channels
-        self.im_colors = im_colors
         self.nbr_timepoints = nbr_timepoints
         self.nbr_positions = nbr_positions
+        self.im_colors = im_colors
         self.bit_depth = bit_depth
         self.metadata_json = metadata_json
         self.data_set = data_set

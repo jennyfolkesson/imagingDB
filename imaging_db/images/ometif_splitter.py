@@ -4,7 +4,6 @@ import os
 import tifffile
 from tqdm import tqdm
 
-import imaging_db.filestorage.s3_storage as s3_storage
 import imaging_db.images.file_splitter as file_splitter
 import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.meta_utils as meta_utils
@@ -16,25 +15,22 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
     """
     def __init__(self,
                  data_path,
-                 s3_dir,
-                 override=False,
+                 storage_dir,
+                 storage_class,
+                 storage_access=None,
+                 overwrite=False,
                  file_format=".png",
                  nbr_workers=4,
                  int2str_len=3):
 
-        super().__init__(data_path,
-                         s3_dir,
-                         override=override,
+        super().__init__(data_path=data_path,
+                         storage_dir=storage_dir,
+                         storage_class=storage_class,
+                         storage_access=storage_access,
+                         overwrite=overwrite,
                          file_format=file_format,
                          nbr_workers=nbr_workers,
                          int2str_len=int2str_len)
-
-        self.data_uploader = s3_storage.DataStorage(
-            s3_dir=self.s3_dir,
-            nbr_workers=self.nbr_workers,
-        )
-        if not override:
-            self.data_uploader.assert_unique_id()
 
     def set_frame_info(self, page):
         """
@@ -180,7 +176,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
                 positions=positions,
                 glob_paths=file_paths,
             )
-        self.frames_meta = meta_utils.make_dataframe(nbr_frames=None)
+        self.frames_meta = meta_utils.make_dataframe()
         self.frames_json = []
 
         pos_prog_bar = tqdm(file_paths, desc='Position')

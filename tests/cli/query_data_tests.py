@@ -1,8 +1,9 @@
 from contextlib import contextmanager
+from io import StringIO
 import nose.tools
 import os
+import runpy
 import sys
-from io import StringIO
 from unittest.mock import patch
 
 import imaging_db.database.db_operations as db_ops
@@ -37,9 +38,7 @@ class TestQueryData(db_basetest.DBBaseTest):
         super().setUp()
         # Database credentials file
         self.credentials_path = os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            '..',
+            self.main_dir,
             'db_credentials.json',
         )
         # Add some datasets to session
@@ -179,7 +178,7 @@ class TestQueryData(db_basetest.DBBaseTest):
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
-    def test_query_data_description(self, mock_session):
+    def test_query_data_date_swap(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         query_data.query_data(
             login=self.credentials_path,
@@ -189,8 +188,21 @@ class TestQueryData(db_basetest.DBBaseTest):
 
     @nose.tools.raises(TypeError)
     @patch('imaging_db.database.db_operations.session_scope')
-    def test_query_data_no_loging(self, mock_session):
+    def test_query_data_no_login(self, mock_session):
         mock_session.return_value.__enter__.return_value = self.session
         query_data.query_data(
             start_date='2010-05-01',
         )
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test__main__(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        with patch('argparse._sys.argv',
+                   ['python',
+                    '--login', self.credentials_path,
+                    '--start_date', '2010-05-01',
+                    '--end_date', '2010-06-15']):
+            runpy.run_path(
+                'imaging_db/cli/query_data.py',
+                run_name='__main__',
+            )

@@ -1,9 +1,12 @@
 import nose.tools
 import numpy as np
+import os
 import unittest
+from testfixtures import TempDirectory
 from unittest.mock import patch
 
 import imaging_db.images.file_splitter as file_splitter
+import imaging_db.utils.aux_utils as aux_utils
 
 
 class TestFileSplitter(unittest.TestCase):
@@ -13,17 +16,33 @@ class TestFileSplitter(unittest.TestCase):
 
     @patch.multiple(file_splitter.FileSplitter, __abstractmethods__=set())
     def setUp(self):
-        # Start mock instance
+        # Setup mock local storage
+        # Create temporary directory and write temp image
+        self.tempdir = TempDirectory()
+        self.temp_path = self.tempdir.path
+        self.tempdir.makedir('storage_mount_point')
+        mount_point = os.path.join(self.temp_path, 'storage_mount_point')
+
         self.test_path = "/datapath/testfile.tif"
-        self.s3_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        self.storage_dir = "raw_frames/ISP-2005-06-09-20-00-00-0001"
+        storage_class = aux_utils.get_storage_class('local')
         self.mock_inst = file_splitter.FileSplitter(
             data_path=self.test_path,
-            s3_dir=self.s3_dir,
+            storage_dir=self.storage_dir,
+            storage_class=storage_class,
+            storage_access=mount_point
         )
+
+    def tearDown(self):
+        """
+        Tear down temporary folder and files and stop S3 mock
+        """
+        TempDirectory.cleanup_all()
+        nose.tools.assert_equal(os.path.isdir(self.temp_path), False)
 
     def test_init(self):
         nose.tools.assert_equal(self.mock_inst.data_path, self.test_path)
-        nose.tools.assert_equal(self.mock_inst.s3_dir, self.s3_dir)
+        nose.tools.assert_equal(self.mock_inst.storage_dir, self.storage_dir)
         nose.tools.assert_equal(self.mock_inst.int2str_len, 3)
         nose.tools.assert_equal(self.mock_inst.file_format, '.png')
 
@@ -79,7 +98,7 @@ class TestFileSplitter(unittest.TestCase):
         self.mock_inst.set_global_meta(nbr_frames=nbr_frames)
         # Assert contents
         meta = self.mock_inst.get_global_meta()
-        nose.tools.assert_equal(meta['s3_dir'], self.s3_dir)
+        nose.tools.assert_equal(meta['storage_dir'], self.storage_dir)
         nose.tools.assert_equal(meta['nbr_frames'], nbr_frames)
         nose.tools.assert_equal(meta['im_height'], test_shape[0])
         nose.tools.assert_equal(meta['im_width'], test_shape[1])

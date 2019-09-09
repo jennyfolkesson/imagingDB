@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 import imaging_db.images.tif_id_splitter as tif_id_splitter
+import imaging_db.utils.aux_utils as aux_utils
 import imaging_db.utils.image_utils as im_utils
 
 
@@ -23,7 +24,7 @@ class TestTifIDSplitter(unittest.TestCase):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock S3 dir
-        self.s3_dir = "raw_frames/ML-2005-06-09-20-00-00-1000"
+        self.storage_dir = "raw_frames/ML-2005-06-09-20-00-00-1000"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -36,11 +37,11 @@ class TestTifIDSplitter(unittest.TestCase):
         self.description = 'ImageJ=1.52e\nimages=6\nchannels=2\nslices=3\nmax=10411.0'
         # Save test tif file
         self.file_path = os.path.join(self.temp_path, "A1_2_PROTEIN_test.tif")
-        tifffile.imsave(self.file_path,
-                        self.im,
-                        description=self.description,
-                        )
-
+        tifffile.imsave(
+            self.file_path,
+            self.im,
+            description=self.description,
+        )
         # Setup mock S3 bucket
         self.mock = mock_s3()
         self.mock.start()
@@ -48,13 +49,12 @@ class TestTifIDSplitter(unittest.TestCase):
         self.bucket_name = 'czbiohub-imaging'
         self.conn.create_bucket(Bucket=self.bucket_name)
         # Instantiate file parser class
+        storage_class = aux_utils.get_storage_class('s3')
         self.frames_inst = tif_id_splitter.TifIDSplitter(
             data_path=self.file_path,
-            s3_dir="raw_frames/ML-2005-06-09-20-00-00-1000",
-            override=False,
-            file_format=".png",
+            storage_dir="raw_frames/ML-2005-06-09-20-00-00-1000",
+            storage_class=storage_class,
         )
-
         # Upload data
         self.frames_inst.get_frames_and_metadata(
             filename_parser="parse_ml_name",
@@ -124,7 +124,7 @@ class TestTifIDSplitter(unittest.TestCase):
         ]
         # Download uploaded data and compare to im
         for i, im_name in enumerate(im_names):
-            key = "/".join([self.s3_dir, im_name])
+            key = "/".join([self.storage_dir, im_name])
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image
@@ -152,9 +152,5 @@ class TestTifIDSplitter(unittest.TestCase):
             '001fa77b7c20cd157e725defa454609f7e278303f8e59645479ab8fb1ad57330',
             '075aedba73ced5d4f1200f9304f5f1115bb83d05898c8d601e4b7a8a90a51754',
         ]
-
         sha = self.frames_inst.frames_meta.sha256.tolist()
-
         nose.tools.assert_equal(expected_hash, sha)
-
-
