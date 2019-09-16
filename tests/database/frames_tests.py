@@ -17,7 +17,7 @@ class TestFrames(db_basetest.DBBaseTest):
             parent_id=None,
         )
         self.frames_global = frames_global.FramesGlobal(
-            s3_dir='test_bucket/testdir',
+            storage_dir='test_bucket/testdir',
             nbr_frames=1,
             im_width=100,
             im_height=150,

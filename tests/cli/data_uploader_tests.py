@@ -37,7 +37,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         self.nbr_channels = 2
         self.nbr_slices = 3
         # Mock S3 dir
-        self.s3_dir = "raw_frames/TEST-2005-06-09-20-00-00-1000"
+        self.storage_dir = "raw_frames/TEST-2005-06-09-20-00-00-1000"
         # Create temporary directory and write temp image
         self.tempdir = TempDirectory()
         self.temp_path = self.tempdir.path
@@ -130,8 +130,8 @@ class TestDataUploader(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
         self.assertEqual(
-            global_query[0].s3_dir,
-            self.s3_dir,
+            global_query[0].storage_dir,
+            self.storage_dir,
         )
         self.assertEqual(
             global_query[0].nbr_frames,
@@ -191,7 +191,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
         it = itertools.product(range(self.nbr_channels), range(self.nbr_slices))
         for i, (c, z) in enumerate(it):
             im_name = 'im_c00{}_z00{}_t000_p000.png'.format(c, z)
-            key = os.path.join(self.s3_dir, im_name)
+            key = os.path.join(self.storage_dir, im_name)
             byte_string = self.conn.Object(
                 self.bucket_name, key).get()['Body'].read()
             # Construct an array from the bytes and decode image
@@ -278,7 +278,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
             .one()
         expected_s3 = "raw_files/TEST-2005-06-09-20-00-00-1000"
         self.assertEqual(
-            file_global.s3_dir,
+            file_global.storage_dir,
             expected_s3,
         )
         expected_meta = {'file_origin': self.file_path}
@@ -520,7 +520,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
         self.assertEqual(
-            global_query[0].s3_dir,
+            global_query[0].storage_dir,
             self.storage_dir,
         )
         self.assertEqual(
@@ -641,7 +641,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             .one()
         expected_dir = "raw_files/TEST-2005-06-09-20-00-00-1000"
         self.assertEqual(
-            file_global.s3_dir,
+            file_global.storage_dir,
             expected_dir,
         )
         expected_meta = {'file_origin': self.file_path}
@@ -752,7 +752,7 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == dataset_serial)
         self.assertEqual(
-            global_query[0].s3_dir,
+            global_query[0].storage_dir,
             'raw_frames/' + dataset_serial,
         )
         self.assertEqual(
