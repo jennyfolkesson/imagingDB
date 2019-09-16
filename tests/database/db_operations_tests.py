@@ -184,7 +184,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
         self.assertEqual(
-            global_query[0].s3_dir,
+            global_query[0].storage_dir,
             self.global_meta['storage_dir'],
         )
         self.assertEqual(
@@ -256,7 +256,7 @@ class TestDBOperations(db_basetest.DBBaseTest):
             .join(db_ops.DataSet) \
             .filter(db_ops.DataSet.dataset_serial == dataset_serial) \
             .one()
-        self.assertEqual(file_global.s3_dir, self.storage_dir)
+        self.assertEqual(file_global.storage_dir, self.storage_dir)
         self.assertEqual(file_global.file_name, file_name)
         self.assertDictEqual(file_global.metadata_json, self.global_json_meta)
         self.assertEqual(file_global.sha256, self.sha256)

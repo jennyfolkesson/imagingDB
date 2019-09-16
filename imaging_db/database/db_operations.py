@@ -191,7 +191,7 @@ class DatabaseOperations:
         )
         # Add global frame information
         new_frames_global = FramesGlobal(
-            s3_dir=global_meta["storage_dir"],
+            storage_dir=global_meta["storage_dir"],
             nbr_frames=global_meta["nbr_frames"],
             im_width=global_meta["im_width"],
             im_height=global_meta["im_height"],
@@ -264,7 +264,7 @@ class DatabaseOperations:
         )
         # Add s3 location
         new_file_global = FileGlobal(
-            s3_dir=storage_dir,
+            storage_dir=storage_dir,
             file_name=file_name,
             metadata_json=global_json_meta,
             data_set=new_dataset,
@@ -306,7 +306,7 @@ class DatabaseOperations:
                 .filter(DataSet.dataset_serial == dataset.dataset_serial) \
                 .one()
 
-            return file_global.s3_dir, [file_global.file_name]
+            return file_global.storage_dir, [file_global.file_name]
         else:
             # Get frames
             all_frames = session.query(Frames) \
@@ -321,7 +321,7 @@ class DatabaseOperations:
                 channels=channels,
                 slices=slices,
             )
-            storage_dir = sliced_frames[0].frames_global.s3_dir
+            storage_dir = sliced_frames[0].frames_global.storage_dir
 
             file_names = []
             for f in sliced_frames:
@@ -415,7 +415,7 @@ class DatabaseOperations:
         """
         # Collect global metadata that can be used to instantiate im_stack
         global_meta = {
-            "storage_dir": frames[0].frames_global.s3_dir,
+            "storage_dir": frames[0].frames_global.storage_dir,
             "nbr_frames": frames[0].frames_global.nbr_frames,
             "im_width": frames[0].frames_global.im_width,
             "im_height": frames[0].frames_global.im_height,

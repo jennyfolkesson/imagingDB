@@ -44,7 +44,7 @@ def migrate_db(credentials_filename):
         for file in files:
             if file.sha256 is None:
                 data_loader = s3_storage.S3Storage(
-                    s3_dir=file.s3_dir,
+                    storage_dir=file.storage_dir,
                 )
                 file_name = file.metadata_json["file_origin"]
                 file_name = file_name.split("/")[-1]
@@ -62,7 +62,7 @@ def migrate_db(credentials_filename):
         for frame in frames:
             if frame.sha256 is None:
                 data_loader = s3_storage.S3Storage(
-                    s3_dir=frame.frames_global.s3_dir,
+                    storage_dir=frame.frames_global.storage_dir,
                 )
                 im = data_loader.get_im(frame.file_name)
                 checksum = meta_utils.gen_sha256(im)
