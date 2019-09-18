@@ -147,7 +147,27 @@ class DataStorage(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_stack(self, file_names, stack_shape, bit_depth):
+    def get_stack(self, file_names):
+        """
+        Given file names only, this will fetch corresponding 2D images and stack
+        them to a 3D shape, where the third dimension is the length of file
+        names, regardless of what indices the file names encode.
+        A use case is where your file names indicate only one type of index,
+        e.g. a z stack, a channel, or one timepoint.
+
+        :param list of str file_names: Frame file names
+        :return np.array im_stack: Stack of 2D images
+        """
+        with concurrent.futures.ThreadPoolExecutor(self.nbr_workers) as executor:
+            pool_result = executor.map(self.get_im, file_names)
+
+        im_stack = []
+        for im_nbr, im in enumerate(pool_result):
+            im_stack.append(im)
+        im_stack = np.stack(im_stack, axis=-1)
+        return im_stack
+
+    def get_stack_with_shape(self, file_names, stack_shape, bit_depth):
         """
         Given file names and a 3D stack shape, this will fetch corresponding
         images, attempt to fit them into the stack and return image stack.
