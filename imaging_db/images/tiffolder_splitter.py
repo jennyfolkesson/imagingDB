@@ -112,10 +112,19 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         it will assume that the file name contains 4 integers corresponding to
         these 4 indices. If that's not the case, you can specify a custom parser
         in filename_parsers.
-        Global metadata dict is assumed to be in the same folder in a file
-        named metadata.txt (optional).
+        Global metadata dict is assumed to be in the same directory in a file
+        named metadata.txt.
+        The metadata.txt file is assumed to contain a minimum of the following
+        (with example values):
+            'Summary': {
+                'PixelType': 'GRAY16',
+                'BitDepth': 8,
+                'Width': 15,
+                'Height': 10
+            }
+        TODO: Make tiffolder work even if there is no metadata.txt file
 
-        :param str filename_parser:
+        :param str filename_parser: Function name in filename_parsers.py
         """
         assert os.path.isdir(self.data_path), \
             "Directory doesn't exist: {}".format(self.data_path)

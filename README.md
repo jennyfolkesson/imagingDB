@@ -123,16 +123,24 @@ The data uploader CLI takes the following arguments:
     * _frames_format:_ If uploading frames, specify what upload type. For a deep dive
      into how the splitting into metadata and frames work, please see documentation directly
      in the [splitter classes](https://github.com/czbiohub/imagingDB/tree/master/imaging_db/images).
+     As well as in their corresponding test files in the tests/ directory and the
+     [data_uploader_tests](https://github.com/czbiohub/imagingDB/blob/master/tests/cli/data_uploader_tests.py).
      Options are: 
-        * 'ome_tiff': Needs MicroManagerMetadata tag for each frame for metadata, see
+        * 'ome_tiff': Assumes either a file name or a directory containing one or several 
+        [ome-tiff](https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/) files (one for each position).
+         Needs MicroManagerMetadata tag for each frame for metadata, see
         [config_ome_tiff.json](https://github.com/czbiohub/imagingDB/blob/master/config_ome_tiff.json)
         for example. For this format you can specify a JSON schema which will tell imagingDB
         which metadata fields to parse (see example in meta_schema below)
-        * 'tif_folder': When each file is already stored as an individual frame.
+        * 'tif_folder': Assumes a directory where each frame is already stored as an individual
+        tiff file.
         These get read, get their (MicroManager) metadata extracted and saved in storage.
+        This option currently assumes that there is also a metadata.txt file in the directory,
+        see [description](https://github.com/czbiohub/imagingDB/blob/master/imaging_db/images/tiffolder_splitter.py#L106)
         See example config [config_tiffolder.json](https://github.com/czbiohub/imagingDB/blob/master/config_tiffolder.json).
-        * 'tif_id': Needs ImageDescription tag in first frame page for metadata (not
-        necessarily MicroManager). See example in [config_tif_id.json](https://github.com/czbiohub/imagingDB/blob/master/config_tif_id.json).
+        * 'tif_id': Assumes a tiff file with limited metadata (not necessarily MicroManager). 
+        Needs ImageDescription tag in first frame page for metadata. 
+        See example config in [config_tif_id.json](https://github.com/czbiohub/imagingDB/blob/master/config_tif_id.json).
     * _microscope:_ Which microscope was used for image acquisition (optional, string)
     * _filename_parser:_ If there's metadata information embedded in file name,
     specify which function that can parse file names for you.
