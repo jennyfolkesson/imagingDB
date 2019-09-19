@@ -7,8 +7,10 @@ This is a data management system intended for microscopy images. It consists of 
 * **File storage**: Image data is stored both in an AWS S3 bucket named 'czbiohub-imaging', as
 well as local storage at the Biohub 
 (an [IBM ESS](https://www.ibm.com/us-en/marketplace/ibm-elastic-storage-server)) which is assumed to be mounted on the machine 
-you're running imagingDB on. The idea is to have fast access to data with the local storage,
-while still having offsite backup taken care of automatically.
+you're running imagingDB on. The idea is to have fast and cheap access to data with the local storage,
+while still having offsite backup taken care of automatically. The S3 portion of the storage
+could also be used to access your data when not at/vpn connected to the Biohub or to share data
+with collaborators.
 The data is synced between local storage and S3 using [AWS DataSync](https://aws.amazon.com/datasync/) on a daily basis.
 If repurposing this repo, make sure to change storage access points in the DataStorage class.
 * **A database**. We're using an [AWS PostgreSQL RDS](https://aws.amazon.com/rds/postgresql/) 
