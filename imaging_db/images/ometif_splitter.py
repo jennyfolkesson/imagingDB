@@ -157,6 +157,7 @@ class OmeTiffSplitter(file_splitter.FileSplitter):
             if isinstance(positions, str):
                 positions = json_ops.str2json(positions)
                 if isinstance(positions, int):
+                    print('is int')
                     positions = [positions]
 
         # Read first file to find available positions

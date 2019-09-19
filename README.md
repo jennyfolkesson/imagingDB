@@ -7,9 +7,11 @@ This is a data management system intended for microscopy images. It consists of 
 * **File storage**: Image data is stored both in an AWS S3 bucket named 'czbiohub-imaging', as
 well as local storage at the Biohub 
 (an [IBM ESS](https://www.ibm.com/us-en/marketplace/ibm-elastic-storage-server)) which is assumed to be mounted on the machine 
-you're running imagingDB on. The idea is to have fast access to data with the local storage,
-while still having offsite backup. The data is synced automatically between local storage and S3
-using [AWS DataSync](https://aws.amazon.com/datasync/) on a daily basis.
+you're running imagingDB on. The idea is to have fast and cheap access to data with the local storage,
+while still having offsite backup taken care of automatically. The S3 portion of the storage
+could also be used to access your data when not at/vpn connected to the Biohub or to share data
+with collaborators.
+The data is synced between local storage and S3 using [AWS DataSync](https://aws.amazon.com/datasync/) on a daily basis.
 If repurposing this repo, make sure to change storage access points in the DataStorage class.
 * **A database**. We're using an [AWS PostgreSQL RDS](https://aws.amazon.com/rds/postgresql/) 
 database, and SQLAchemy for interacting with the database using Python. 
@@ -17,7 +19,8 @@ database, and SQLAchemy for interacting with the database using Python.
 ![imagingDB layout](imagingDB_overview.png?raw=true "Title")
 
 A dataset can consist of up to five dimensional image data: x, y, z, channels, timepoints,
-and positions (FOVs), as well as associated metadata.
+and positions (FOVs), as well as associated metadata (global for the entire dataset and local
+for each 2D frame).
 Each dataset is assumed to have an unique identifier in the form
 
 \<ID>-YYYY-MM-DD-HH-MM-SS-\<XXXX>
@@ -28,10 +31,49 @@ section is a four digit serial number.
 Below is a visualization of the database schema, generated using 
 [eralchemy](https://github.com/Alexis-benoist/eralchemy). 
 The arch on the top of the data_set table should connect parent_id with id, and it also doesn't 
-show foreign keys clearly, other than that it gives an overview of schema. 
+show foreign keys (dataset_id to id) clearly, other than that it gives an overview of schema. 
 
 ![Database schema](db_schema.png?raw=true "Title")
 
+### data_set
+This is the main table in which every dataset gets an entry. It includes the dataset identifier
+described above, and you can include strings describing your dataset and the microscope you
+used if you so like.
+
+You can choose if you'd like to upload your dataset as an uninspected file, or to split it into
+frames. Each frame is a 2D image encoding the x, y information for each of the other indices 
+slices (z), channels, timepoints and positions (FOVs). This seemed like the most obvious partition
+into smaller files, and the file storage classes allow you to assemble your frames into
+up to 5D numpy arrays with the indices you're interested in working with.
+Another option that would be interesting in exploring is the
+[Zarr](https://zarr.readthedocs.io/en/stable/) storage format and let the user define chunk
+sizes, however that's future work. Right now 2D frames are stored in the PNG format since
+that provides good lossless compression.
+
+The timestamp part if the dataset identifier gets stored as a separate datetime column, which
+allows for quick queries if you're searching for datasets acquired within a certain time window.
+
+If you have datasets that are related to each other, you also have the option to link them using
+the parent_id column. An example use case is if you have uploaded an imaging dataset, and you have acquired some
+other type of measurements of the same dataset that is stored in a different type of file
+(see the bottom of [this notebook](https://github.com/czbiohub/imagingDB/blob/master/notebooks/jsonb_queries.ipynb)
+for an example).
+
+### file_global
+If a dataset consists of one file, this will be uploaded to storage as is. The storage directory
+will be raw_frames/dataset_serial/ and the file will keep its original file name.
+A SHA-256 hash is computed during upload and is stored to check for future file corruption.
+
+### frames_global
+If choosing to split your dataset into frames, this table will provide you with a global
+summary of your dataset such as total number of frames, frame shape and type, as well as
+how many (z, channel, time, position) indices there are, directory location of image data in storage.
+as well as other metadata found in the header stored in a queryable JSONB column.
+
+### frames
+This table has a many to one mapping with frames_global, and it encodes indices and
+metadata for individual frames. A SHA-256 hash is also computed during upload and stored
+in a column here to ensure that potential data corruption does not go undetected.
 
 ## Getting Started
 
@@ -50,13 +92,15 @@ specify x, y, z, t, p indices.
 The query data tool interfaces the database only, it queries the database and prints out 
 datasets that matches specified search criteria.
 
-In addition to the CLIs, you can see the Jupyter notebooks for examples on how to query
-and assemble full or partial datasets directly in python.
+In addition to the CLIs, you can see examples on how to programatically access your
+data in the [Jupyter notebooks](https://github.com/czbiohub/imagingDB/tree/master/notebooks),
+e.g. how to query data and assemble full or partial imaging datasets directly in Python.
 
 The data uploader CLI takes the following arguments:
 
- * **csv:** a csv file containing file information, please see the
- _files_for_upload.csv_ in this repository for required fields and example values.
+ * **csv:** a csv file containing information for each dataset (one per row), please see the
+ [_files_for_upload.csv_](https://github.com/czbiohub/imagingDB/blob/master/files_for_upload.csv) 
+ in this repository for required fields and example values.
  The csv file should contain the following columns:
     * _dataset_id:_ The unique dataset identifier (required)
     * _file_name:_ Full path to the file/directory to upload (required)
@@ -65,7 +109,7 @@ The data uploader CLI takes the following arguments:
     you can specify the unique parent dataset ID and that will create an internal reference
     in the data_set table (unfortunately not very clearly depicted in the database schema). (optional)
     * _positions:_ [list of ints] Positions in file directory that belong to the same
-    dataset ID. Optional for ome_tif uploads only.
+    dataset ID (optional, for ome_tiff uploads only).
 * **login:** a json file containing database login credentials (see db_credentials.json)
     * _drivername_
     * _username_
@@ -74,30 +118,46 @@ The data uploader CLI takes the following arguments:
     * _port_
     * _dbname_
 * **config:** a json config file containing upload settings (see example in config.json)
-    * _upload_type:_ 'frames' if you want to split file into frames, or 'format'
+    * _upload_type:_ 'frames' if you want to split your dataset into individual 2D frames, or 'file'
     if you want to upload a file uninspected. (required)
-    * _frames_format:_ If uploading frames, specify what upload type. Options
-    are: 'ome_tiff' (needs MicroManagerMetadata tag for each frame for metadata),
-     'tif_folder' (when each file is already an individual frame),
-     'tif_id' (needs ImageDescription tag in first frame page for metadata)
-    * _microscope:_ [string] Which microscope was used for image acquisition (optional)
+    * _frames_format:_ If uploading frames, specify what upload type. For a deep dive
+     into how the splitting into metadata and frames work, please see documentation directly
+     in the [splitter classes](https://github.com/czbiohub/imagingDB/tree/master/imaging_db/images).
+     As well as in their corresponding test files in the tests/ directory and the
+     [data_uploader_tests](https://github.com/czbiohub/imagingDB/blob/master/tests/cli/data_uploader_tests.py).
+     Options are: 
+        * 'ome_tiff': Assumes either a file name or a directory containing one or several 
+        [ome-tiff](https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/) files (one for each position).
+         Needs MicroManagerMetadata tag for each frame for metadata, see
+        [config_ome_tiff.json](https://github.com/czbiohub/imagingDB/blob/master/config_ome_tiff.json)
+        for example. For this format you can specify a JSON schema which will tell imagingDB
+        which metadata fields to parse (see example in meta_schema below)
+        * 'tif_folder': Assumes a directory where each frame is already stored as an individual
+        tiff file.
+        These get read, get their (MicroManager) metadata extracted and saved in storage.
+        This option currently assumes that there is also a metadata.txt file in the directory,
+        see [description](https://github.com/czbiohub/imagingDB/blob/master/imaging_db/images/tiffolder_splitter.py#L106)
+        See example config [config_tiffolder.json](https://github.com/czbiohub/imagingDB/blob/master/config_tiffolder.json).
+        * 'tif_id': Assumes a tiff file with limited metadata (not necessarily MicroManager). 
+        Needs ImageDescription tag in first frame page for metadata. 
+        See example config in [config_tif_id.json](https://github.com/czbiohub/imagingDB/blob/master/config_tif_id.json).
+    * _microscope:_ Which microscope was used for image acquisition (optional, string)
     * _filename_parser:_ If there's metadata information embedded in file name,
-    specify which function (in aux_utils) that can parse the name for you.
-    Current options are: 'parse_ml_name' (optional)
+    specify which function that can parse file names for you.
+    Current options are: 'parse_ml_name' and 'parse_sms_name' (optional)
+    They're taylored to specific group that use different naming conventions, see more
+    detail in [filename_parsers.py](https://github.com/czbiohub/imagingDB/blob/master/imaging_db/images/filename_parsers.py).
     * _meta_schema:_ If doing a ome_tiff opload, you can specify a metadata 
-    schema with required fields. See example in metadata_schema.json
+    schema with required fields. See example in 
+    [metadata_schema.json](https://github.com/czbiohub/imagingDB/blob/master/metadata_schema.json)
     (optional for ome_tiff uploads).
-* **storage:** (optional) 'local' (default) or 's3'. Uploads to local storage will be 
-synced to S3 daily.
-* **storage_access:** (optional) If using a different storage than defaults, specify here.
+* **storage:** 'local' (default) or 's3'. Uploads to local storage will be 
+synced to S3 daily. (optional)
+* **storage_access:** If using a different storage than defaults, specify here.
 Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)
-for local storage, and czbiohub-imaging (bucket name) for S3 storage.
-* **nbr_workers:** (optional) Number of threads used for image uploads
-(default = nbr of processors on machine * 5).
-
-If you want to validate metadata for each frame, you can specify a JSON schema file in the
-_meta_schema_ field of the csv. This metadata will be evaluated for each
-frame of the file. See metadata_schema.json for an example schema.
+for local storage, and czbiohub-imaging (bucket name) for S3 storage. (optional)
+* **nbr_workers:** Number of threads used for image uploads
+(default = nbr of processors on machine * 5). (optional)
 
 ```buildoutcfg
 python imaging_db/cli/data_uploader.py --csv files_for_upload.csv --login db_credentials.json --config config.json
@@ -155,11 +215,11 @@ key ID and secret key using the command
 ```
 aws configure
 ```
-#### The database lives in an AWS PostgreSQL RDS
-You will need to be added as a user there too, and add your username, password and the host in a json file
-for database access (see db_credentials.json)
+#### Database Location
+The database lives in an AWS PostgreSQL RDS. You will need to be added as a user there too, 
+and add your username, password and the host in a json file for database access (see db_credentials.json)
 
-Please contact Jenny on Slack (or jenny.folkesson@czbiohub.org) if you want to be added as a user.
+Please contact Jenny or Kevin via Slack or email if you want to be added as a user.
 
 ## Running imagingDB on a server
 

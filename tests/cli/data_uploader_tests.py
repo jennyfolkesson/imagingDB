@@ -15,9 +15,10 @@ from unittest.mock import patch
 
 import imaging_db.database.db_operations as db_ops
 import imaging_db.cli.data_uploader as data_uploader
-import tests.database.db_basetest as db_basetest
+import imaging_db.metadata.json_operations as json_ops
 import imaging_db.utils.image_utils as im_utils
 import imaging_db.utils.meta_utils as meta_utils
+import tests.database.db_basetest as db_basetest
 
 
 class TestDataUploader(db_basetest.DBBaseTest):
@@ -103,6 +104,7 @@ class TestDataUploader(db_basetest.DBBaseTest):
 
     @patch('imaging_db.database.db_operations.session_scope')
     def test_upload_frames(self, mock_session):
+        # Testing uploading frames as tif_id
         mock_session.return_value.__enter__.return_value = self.session
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path,
@@ -820,3 +822,150 @@ class TestDataUploaderLocalStorage(db_basetest.DBBaseTest):
             im_out = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH)
             nose.tools.assert_equal(im.dtype, np.uint16)
             numpy.testing.assert_array_equal(im_out, im + i * 10000)
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_upload_tiffolder(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+
+        dataset_serial = 'SMS-2010-01-01-01-00-00-0005'
+        # Temporary frame
+        im = np.ones((10, 15), dtype=np.uint8)
+
+        # Save test tif files
+        self.tempdir.makedir('tiffolder')
+        tif_dir = os.path.join(self.temp_path, 'tiffolder')
+        channel_names = ['phase', 'brightfield', '666']
+        # Write files in dir
+        for c_name in channel_names:
+            for z in range(2):
+                file_name = 'img_{}_t060_p050_z00{}.tif'.format(c_name, z)
+                file_path = os.path.join(tif_dir, file_name)
+                ijmeta = {"Info": json.dumps({"c": c_name, "z": z})}
+                tifffile.imsave(
+                    file_path,
+                    im + 50 * z,
+                    ijmetadata=ijmeta,
+                )
+        # Write external metadata in dir
+        self.meta_dict = {
+            'Summary': {'Slices': 6,
+                        'PixelType': 'GRAY8',
+                        'Time': '2018-11-01 19:20:34 -0700',
+                        'z-step_um': 0.5,
+                        'PixelSize_um': 0,
+                        'BitDepth': 8,
+                        'Width': 15,
+                        'Height': 10},
+        }
+        self.json_filename = os.path.join(tif_dir, 'metadata.txt')
+        json_ops.write_json_file(self.meta_dict, self.json_filename)
+
+        # Create csv file for upload
+        upload_dict = {
+            'dataset_id': [dataset_serial],
+            'file_name': [tif_dir],
+            'description': ['Testing tifffolder upload'],
+        }
+        upload_csv = pd.DataFrame.from_dict(upload_dict)
+        csv_path = os.path.join(self.temp_path, "test_tiffolder_upload.csv")
+        upload_csv.to_csv(csv_path)
+        config_path = os.path.join(
+            self.main_dir,
+            'config_tiffolder.json',
+        )
+        # Upload data
+        data_uploader.upload_data_and_update_db(
+            csv=csv_path,
+            login=self.credentials_path,
+            config=config_path,
+            storage_access=self.mount_point,
+        )
+        # Query database to find data_set and frames
+        datasets = self.session.query(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == dataset_serial)
+        self.assertEqual(datasets.count(), 1)
+        dataset = datasets[0]
+        self.assertTrue(dataset.frames)
+        self.assertEqual(dataset.dataset_serial, dataset_serial)
+        date_time = dataset.date_time
+        self.assertEqual(date_time.year, 2010)
+        self.assertEqual(date_time.month, 1)
+        self.assertEqual(date_time.day, 1)
+        self.assertEqual(dataset.description, 'Testing tifffolder upload')
+        # query frames_global
+        global_query = self.session.query(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == dataset_serial)
+        self.assertEqual(
+            global_query[0].storage_dir,
+            'raw_frames/' + dataset_serial,
+        )
+        self.assertEqual(
+            global_query[0].nbr_frames,
+            6,
+        )
+        self.assertEqual(
+            global_query[0].im_width,
+            15,
+        )
+        self.assertEqual(
+            global_query[0].im_height,
+            10,
+        )
+        self.assertEqual(
+            global_query[0].nbr_slices,
+            2)
+        self.assertEqual(
+            global_query[0].nbr_channels,
+            3,
+        )
+        self.assertEqual(
+            global_query[0].nbr_positions,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].nbr_timepoints,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].im_colors,
+            1,
+        )
+        self.assertEqual(
+            global_query[0].bit_depth,
+            'uint8',
+        )
+        # query frames
+        frames = self.session.query(db_ops.Frames) \
+            .join(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == dataset_serial) \
+            .order_by(db_ops.Frames.file_name)
+        # Validate content
+        # Channel numbers will be assigned alphabetically
+        channel_names.sort()
+        for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
+            im_name = 'im_c00{}_z00{}_t060_p050.png'.format(c, z)
+            self.assertEqual(frames[i].file_name, im_name)
+            self.assertEqual(frames[i].channel_idx, c)
+            self.assertEqual(frames[i].channel_name, channel_names[c])
+            self.assertEqual(frames[i].slice_idx, z)
+            self.assertEqual(frames[i].time_idx, 60)
+            self.assertEqual(frames[i].pos_idx, 50)
+            self.assertEqual(
+                frames[i].sha256,
+                meta_utils.gen_sha256(im + 50 * z),
+            )
+        # # Download frames from storage and compare to originals
+        for i in range(len(channel_names)):
+            for z in range(2):
+                im_name = 'im_c00{}_z00{}_t060_p050.png'.format(i, z)
+                im_path = os.path.join(
+                    self.mount_point,
+                    'raw_frames',
+                    dataset_serial,
+                    im_name,
+                )
+            im_out = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH)
+            nose.tools.assert_equal(im.dtype, np.uint8)
+            numpy.testing.assert_array_equal(im_out, im + z * 50)

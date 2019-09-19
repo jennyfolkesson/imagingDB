@@ -136,7 +136,11 @@ class TestDataStorage(unittest.TestCase):
 
     @nose.tools.raises(NotImplementedError)
     def test_get_stack(self):
-        self.storage_inst.get_stack(['file1.png'], (10, 10, 1), 'uint16')
+        self.storage_inst.get_stack(['file1.png'])
+
+    @nose.tools.raises(NotImplementedError)
+    def test_get_stack_with_shape(self):
+        self.storage_inst.get_stack_with_shape(['file1.png'], (10, 10, 1), 'uint16')
 
     @nose.tools.raises(NotImplementedError)
     def test_download_file(self):

@@ -180,8 +180,23 @@ class TestS3Storage(unittest.TestCase):
         data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
         data_storage.upload_frames(self.stack_names, self.im_stack)
         # Load image stack in memory
-        stack_shape = (10, 15, 1, 2)
         im_out = data_storage.get_stack(
+            self.stack_names,
+        )
+        nose.tools.assert_equal(self.im_stack.shape, im_out.shape)
+        for im_nbr in range(self.im_stack.shape[-1]):
+            # Assert that contents are the same
+            numpy.testing.assert_array_equal(
+                im_out[..., im_nbr],
+                self.im_stack[..., im_nbr],
+            )
+
+    def test_get_stack_with_shape(self):
+        data_storage = s3_storage.S3Storage(self.storage_dir, self.nbr_workers)
+        data_storage.upload_frames(self.stack_names, self.im_stack)
+        # Load image stack in memory
+        stack_shape = (10, 15, 1, 2)
+        im_out = data_storage.get_stack_with_shape(
             self.stack_names,
             stack_shape=stack_shape,
             bit_depth=np.uint16)

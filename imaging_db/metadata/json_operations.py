@@ -27,17 +27,43 @@ CONFIG_SCHEMA = {
     "required": ["upload_type", "microscope"],
 }
 
-# More Micromanager metadata properties should be added
-# Ask Kevin which ones are required
 MICROMETA_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "ChannelIndex": {"type": "integer"},
-        "Slice": {"type": "integer"},
-        "FrameIndex": {"type": "integer"},
-        "Exposure-ms": {"type": "number"},
-    },
-    "required": ["ChannelIndex", "Slice", "FrameIndex"],
+  "type": "object",
+  "properties": {
+    "MicroManagerMetadata": {
+      "type": "object",
+      "properties": {
+        "ChannelIndex": {
+          "type": "integer"
+        },
+        "Slice": {
+          "type": "integer"
+        },
+        "FrameIndex": {
+          "type": "integer"
+        },
+        "PositionIndex": {
+          "type": "integer"
+        },
+        "Channel": {
+          "type": "string"
+        },
+        "Exposure-ms": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ChannelIndex",
+        "Slice",
+        "FrameIndex",
+        "PositionIndex",
+        "Channel"
+      ]
+    }
+  },
+  "required": [
+    "MicroManagerMetadata"
+  ]
 }
 
 
@@ -154,8 +180,6 @@ def get_metadata_from_tags(page, meta_schema, validate=True):
         if props.get('type') == 'object':
             json_required[key] = page.tags[key].value
             req_params = props.get('required', [])
-            if isinstance(req_params, str):
-                req_params = [req_params]
             # Collect required params like slice, frame, ...
             for req_key in req_params:
                 meta_required[req_key] = json_required[key][req_key]
