@@ -237,3 +237,28 @@ class TestOmeTiffSplitter(unittest.TestCase):
             schema_filename=self.schema_file_path,
         )
         self.assertEqual(frames_inst.im_colors, 3)
+
+    def test_get_frames_and_metadata_file_oneposition(self):
+        im = np.ones((10, 15, 3), dtype=np.uint16)
+        # Metadata
+        mmmetadata = self._get_mmmeta()
+        ijmeta = self._get_ijmeta()
+        # Save test ome tif file
+        file_path_col = os.path.join(self.temp_path, "test_col_Pos1.ome.tif")
+        extra_tags = [('MicroManagerMetadata', 's', 0, mmmetadata, True)]
+        tifffile.imsave(file_path_col,
+                        im,
+                        ijmetadata=ijmeta,
+                        extratags=extra_tags,
+                        )
+        frames_inst = ometif_splitter.OmeTiffSplitter(
+            data_path=file_path_col,
+            storage_dir="raw_frames/ISP-2005-06-09-20-00-00-0003",
+            storage_class=self.storage_class,
+        )
+        # Upload data
+        frames_inst.get_frames_and_metadata(
+            schema_filename=self.schema_file_path,
+            positions='1',
+        )
+        self.assertEqual(frames_inst.im_colors, 3)

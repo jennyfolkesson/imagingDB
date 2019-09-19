@@ -75,11 +75,19 @@ class TestLocalStorage(unittest.TestCase):
         nose.tools.assert_equal(os.path.isdir(self.temp_path), False)
 
     @nose.tools.raises(AssertionError)
-    def test_init_no_mount(self):
+    def test_init_bad_mount(self):
         local_storage.LocalStorage(
             storage_dir=self.existing_dir,
             nbr_workers=self.nbr_workers,
-            access_point='/not/existing/mount_point'
+            access_point='/not/existing/mount_point',
+        )
+
+    @nose.tools.raises(AssertionError)
+    def test_init_no_mount(self):
+        # This test may fail locally if you have local storage mounted
+        local_storage.LocalStorage(
+            storage_dir=self.existing_dir,
+            nbr_workers=self.nbr_workers,
         )
 
     def test_assert_unique_id(self):
