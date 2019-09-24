@@ -353,30 +353,48 @@ class DatabaseOperations:
             frames_query.statement,
             frames_query.session.bind,
         )
-        print(frames_subset)
-        # Get channels
+        # Filter by channels
         if channels is not None:
-            # Channel name
+            if not isinstance(channels, list):
+                channels = [channels]
             if np.all([isinstance(c, str) for c in channels]):
+                # Channel name
                 frames_subset = frames_subset[frames_subset['channel_name'].isin(channels)]
             elif np.all([isinstance(c, int) for c in channels]):
+                # Channel idx
                 cond = frames_subset['channel_idx'].isin(channels)
                 frames_subset = frames_subset[cond]
             else:
-                raise ValueError('channels must be all str or all int')
+                raise TypeError('Channels must be all str or all int')
         # Filter by slice
         if slices is not None:
+            if isinstance(slices, int):
+                slices = [slices]
+            elif not isinstance(slices, list):
+                raise TypeError("invalid slices type:", type(slices))
             frames_subset = frames_subset[frames_subset['slice_idx'].isin(slices)]
         # Filter by time
         if times is not None:
+            if isinstance(times, int):
+                times = [times]
+            elif not isinstance(times, list):
+                raise TypeError("Invalid times type:", type(times))
             frames_subset = frames_subset[frames_subset['time_idx'].isin(times)]
         # Filter by position
         if positions is not None:
+            if isinstance(positions, int):
+                positions = [positions]
+            elif not isinstance(positions, list):
+                raise TypeError("Invalid positions type:", type(positions))
             frames_subset = frames_subset[frames_subset['pos_idx'].isin(positions)]
 
         assert frames_subset.shape[0] > 0, 'No frames matched the query'
         # Reset index
         frames_subset = frames_subset.reset_index(drop=True)
+        # Remove jsonb and internal IDs from table
+        frames_subset = frames_subset.drop(
+            columns=['id', 'frames_global_id', 'metadata_json'],
+        )
         return frames_subset
 
     @staticmethod

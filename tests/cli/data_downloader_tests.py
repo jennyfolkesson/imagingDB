@@ -227,7 +227,7 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage='s3',
-            channels='1',
+            channels=1,
         )
         meta_path = os.path.join(
             dest_dir,
@@ -266,9 +266,9 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage='s3',
-            positions='0',
-            times='0',
-            slices='1',
+            positions=0,
+            times=[0],
+            slices=1,
         )
         meta_path = os.path.join(
             dest_dir,
@@ -575,7 +575,7 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage_access=self.mount_point,
-            channels='1',
+            channels=1,
         )
         meta_path = os.path.join(
             dest_dir,
@@ -614,9 +614,9 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage_access=self.mount_point,
-            positions='0',
-            times='0',
-            slices='1',
+            positions=0,
+            times=0,
+            slices=1,
         )
         meta_path = os.path.join(
             dest_dir,

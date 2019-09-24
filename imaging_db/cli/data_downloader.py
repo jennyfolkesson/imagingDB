@@ -178,22 +178,6 @@ def download_data(dataset_serial,
                 session=session,
             )
     else:
-        # Get all the slicing args and recast as tuples
-        if positions is not None:
-            positions = tuple(positions)
-        if times is not None:
-            times = tuple(times)
-        if channels is not None:
-            # If channels can be converted to ints, they're indices
-            try:
-                channels = [int(c) for c in channels]
-            except ValueError:
-                # Channels are names, not indices
-                channels = channels
-            channels = tuple(channels)
-        if slices is not None:
-            slices = tuple(slices)
-
         # Get the metadata from the requested frames
         with db_ops.session_scope(db_connection) as session:
             global_meta, frames_meta = db_inst.get_frames_meta(
