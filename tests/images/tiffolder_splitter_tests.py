@@ -57,10 +57,11 @@ class TestTifFolderSplitter(unittest.TestCase):
                 file_name = 'img_{}_t000_p050_z00{}.tif'.format(c, z)
                 file_path = os.path.join(self.temp_path, file_name)
                 ijmeta = {"Info": json.dumps({"c": c, "z": z})}
-                tifffile.imsave(file_path,
-                                self.im + 5000 * z,
-                                ijmetadata=ijmeta,
-                                )
+                tifffile.imsave(
+                    file_path,
+                    self.im + 5000 * z,
+                    ijmetadata=ijmeta,
+                )
         # Write external metadata in dir
         self.meta_dict = {
             'Summary': {'Slices': 26,
@@ -186,6 +187,24 @@ class TestTifFolderSplitter(unittest.TestCase):
         self.assertEqual(self.frames_inst.bit_depth, 'uint16')
         self.assertEqual(self.frames_inst.im_colors, 1)
         self.assertListEqual(self.frames_inst.frame_shape, [10, 15])
+
+    def test_set_frame_info_from_file_color(self):
+        self.tempdir.makedir('test_dir')
+        file_path = os.path.join(self.temp_path, 'test_dir/im_temp.tif')
+        im = np.zeros((10, 20, 3), dtype=np.uint8)
+        tifffile.imsave(file_path, im)
+        self.frames_inst.set_frame_info_from_file(file_path)
+        self.assertEqual(self.frames_inst.bit_depth, 'uint8')
+        self.assertEqual(self.frames_inst.im_colors, 3)
+        self.assertListEqual(self.frames_inst.frame_shape, [10, 20])
+
+    @nose.tools.raises(ValueError)
+    def test_set_frame_info_from_file_float(self):
+        self.tempdir.makedir('test_dir')
+        file_path = os.path.join(self.temp_path, 'test_dir/im_temp.tif')
+        im = np.zeros((10, 20, 3), dtype=np.float32)
+        tifffile.imsave(file_path, im)
+        self.frames_inst.set_frame_info_from_file(file_path)
 
     def test_set_frame_meta(self):
         parse_func = getattr(file_parsers, 'parse_sms_name')
