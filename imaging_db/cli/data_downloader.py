@@ -178,6 +178,17 @@ def download_data(dataset_serial,
                 session=session,
             )
     else:
+        # If channels can be converted to ints, they're indices
+        if channels is not None:
+            if not isinstance(channels, list):
+                channels = [channels]
+            try:
+                channels = [int(c) for c in channels]
+            except ValueError:
+                # Channels are names, not indices
+                assert all([isinstance(c, str) for c in channels]), \
+                    "channels must be either all str or int"
+
         # Get the metadata from the requested frames
         with db_ops.session_scope(db_connection) as session:
             global_meta, frames_meta = db_inst.get_frames_meta(

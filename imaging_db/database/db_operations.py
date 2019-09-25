@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -357,10 +356,10 @@ class DatabaseOperations:
         if channels is not None:
             if not isinstance(channels, list):
                 channels = [channels]
-            if np.all([isinstance(c, str) for c in channels]):
+            if all([isinstance(c, str) for c in channels]):
                 # Channel name
                 frames_subset = frames_subset[frames_subset['channel_name'].isin(channels)]
-            elif np.all([isinstance(c, int) for c in channels]):
+            elif all([isinstance(c, int) for c in channels]):
                 # Channel idx
                 cond = frames_subset['channel_idx'].isin(channels)
                 frames_subset = frames_subset[cond]
