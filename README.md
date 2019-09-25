@@ -135,8 +135,9 @@ The data uploader CLI takes the following arguments:
         * 'tif_folder': Assumes a directory where each frame is already stored as an individual
         tiff file.
         These get read, get their (MicroManager) metadata extracted and saved in storage.
-        This option currently assumes that there is also a metadata.txt file in the directory,
-        see [description](https://github.com/czbiohub/imagingDB/blob/master/imaging_db/images/tiffolder_splitter.py#L106)
+        It also a checks if there is a metadata.txt file in the directory, in which case its content
+        will be added to the global metadata of the dataset.
+        See [description](https://github.com/czbiohub/imagingDB/blob/master/imaging_db/images/tiffolder_splitter.py#L106)
         See example config [config_tiffolder.json](https://github.com/czbiohub/imagingDB/blob/master/config_tiffolder.json).
         * 'tif_id': Assumes a tiff file with limited metadata (not necessarily MicroManager). 
         Needs ImageDescription tag in first frame page for metadata. 
