@@ -58,6 +58,28 @@ class TifFolderSplitter(file_splitter.FileSplitter):
             raise ValueError("Bit depth must be 16 or 8, not {}".format(
                 meta_summary["BitDepth"]))
 
+    def set_frame_info_from_file(self, frame_path):
+        """
+        Sets frame shape, im_colors and bit_depth for the class by opening
+        a frame and assuming all frames have the same properties.
+        Must be called once before setting global metadata
+        :param str frame_path: Full path to one 2D tiff image
+        """
+        im = tifffile.TiffFile(frame_path).asarray()
+
+        self.frame_shape = [meta_summary["Height"], meta_summary["Width"]]
+        pixel_type = meta_summary["PixelType"]
+        self.im_colors = 3
+        if pixel_type.find("GRAY") >= 0:
+            self.im_colors = 1
+        if meta_summary["BitDepth"] == 16:
+            self.bit_depth = "uint16"
+        elif meta_summary["BitDepth"] == 8:
+            self.bit_depth = "uint8"
+        else:
+            raise ValueError("Bit depth must be 16 or 8, not {}".format(
+                meta_summary["BitDepth"]))
+
     def _set_frame_meta(self, parse_func, file_name):
         """
         Since information is assumed to be contained in the file name,
@@ -140,14 +162,17 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         )
         nbr_frames = len(frame_paths)
 
-        try:
+        metadata_path = os.path.join(self.data_path, "metadata.txt")
+        if os.listdir(metadata_path):
             self.global_json = json_ops.read_json_file(
                 os.path.join(self.data_path, "metadata.txt"),
             )
-        except FileNotFoundError as e:
-            raise FileNotFoundError("Can't find metadata.txt file in directory", e)
+            self.set_frame_info(self.global_json["Summary"])
+        else:
+            # No metadata.txt file in dir, get frame info from first frame
 
-        self.set_frame_info(self.global_json["Summary"])
+
+
 
         self.frames_meta = meta_utils.make_dataframe(nbr_frames=nbr_frames)
         self.frames_json = []
