@@ -76,18 +76,26 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.main_dir,
             'db_credentials.json',
         )
+        # Write a config file
         self.config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_tif_id.json',
         )
+        config = {
+            "upload_type": "frames",
+            "frames_format": "tif_id",
+            "microscope": "Leica microscope CAN bus adapter",
+            "filename_parser": "parse_ml_name",
+            "storage": "s3"
+        }
+        json_ops.write_json_file(config, self.config_path)
         # Upload frames
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            storage='s3',
         )
-        # Upload file
+        # Create inputs for file upload
         self.dataset_serial_file = 'FILE-2005-06-01-01-00-00-1000'
         self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
@@ -98,14 +106,20 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_file.json',
         )
+        config = {
+            "upload_type": "file",
+            "microscope": "Mass Spectrometry",
+            "storage": "s3",
+        }
+        json_ops.write_json_file(config, config_path)
+        # Upload file
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            storage='s3',
         )
 
     def tearDown(self):
@@ -478,6 +492,7 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             self.im,
             description=self.description,
         )
+        # Create input arguments for data upload
         upload_csv = pd.DataFrame(
             columns=['dataset_id', 'file_name', 'description'],
         )
@@ -497,17 +512,25 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_tif_id.json',
         )
+        config = {
+            "upload_type": "frames",
+            "frames_format": "tif_id",
+            "microscope": "Leica microscope CAN bus adapter",
+            "filename_parser": "parse_ml_name",
+            "storage": "local",
+            "storage_access": self.mount_point
+        }
+        json_ops.write_json_file(config, self.config_path)
         # Upload frames
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            storage_access=self.mount_point,
         )
-        # Upload file
+        # Create input args for file upload
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
         self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
@@ -518,14 +541,21 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_file.json',
         )
+        config = {
+            "upload_type": "file",
+            "microscope": "Mass Spectrometry",
+            "storage": "local",
+            "storage_access": self.mount_point
+        }
+        json_ops.write_json_file(config, config_path)
+        # Upload file
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            storage_access=self.mount_point,
         )
 
     def tearDown(self):
