@@ -2,5 +2,7 @@
     "upload_type": "frames",
     "frames_format": "tif_folder",
     "microscope": "CZDRAGONFLY-PC",
-    "filename_parser": "parse_sms_name"
+    "filename_parser": "parse_sms_name",
+    "storage": "local",
+    "storage_access": "/Volumes/data_lg/czbiohub-imaging/"
 }

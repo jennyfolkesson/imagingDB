@@ -1,4 +1,6 @@
 {
     "upload_type": "file",
-    "microscope": "Mass Spectrometry"
+    "microscope": "Mass Spectrometry",
+    "storage": "local",
+    "storage_access": "/Volumes/data_lg/czbiohub-imaging/"
 }

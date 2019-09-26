@@ -50,21 +50,6 @@ def parse_args():
     )
     parser.set_defaults(overwrite=False)
     parser.add_argument(
-        '--storage',
-        type=str,
-        default='local',
-        help="Optional: Specify 'local' (default) or 's3'."
-             "Uploads to local storage will be synced to S3 daily.",
-    )
-    parser.add_argument(
-        '--storage_access',
-        type=str,
-        default=None,
-        help="If using a different storage than defaults, specify here."
-             "Defaults are /Volumes/data_lg/czbiohub-imaging (mount point)"
-             "for local storage, czbiohub-imaging (bucket name) for S3 storage."
-    )
-    parser.add_argument(
         '--nbr_workers',
         type=int,
         default=None,
@@ -77,8 +62,6 @@ def upload_data_and_update_db(csv,
                               login,
                               config,
                               nbr_workers=None,
-                              storage='local',
-                              storage_access=None,
                               overwrite=False):
     """
     Split, crop volumes and flatfield correct images in input and target
@@ -95,7 +78,7 @@ def upload_data_and_update_db(csv,
                 list positions: Which position files in folder to upload.
                 Uploads all if left empty and file_name is a folder.
                 Only valid for ome-tiff uploads.
-    :param str config: Full path to json config file containing the fields:
+    :param  str config: Full path to json config file containing the fields:
             str upload_type: Specify if the file should be split prior to upload
                 Valid options: 'frames' or 'file'
             str frames_format: Which file splitter class to use.
@@ -104,14 +87,15 @@ def upload_data_and_update_db(csv,
                 'tif_folder' when each file is already an individual frame
                 and relies on MicroManager metadata
                 'tif_id' needs ImageDescription tag in first frame page for metadata
-            str json_meta: If slice, give full path to json metadata schema
-    :param int, None nbr_workers: Number of workers for parallel uploads
-    :param str storage: 'local' (default) - data will be stored locally and
+            str storage: 'local' (default) - data will be stored locally and
                 synced to S3 the same day. Or 'S3' - data will be uploaded
                 directly to S3 then synced with local storage daily.
-    :param str/None storage_access: If not using predefined storage locations,
-            this parameter refers to mount_point for local storage and
-            bucket_name for S3 storage.
+            str storage_access: If not using predefined storage locations,
+                this parameter refers to mount_point for local storage and
+                bucket_name for S3 storage. (optional)
+            str json_meta: If splitting to frames, give full path to json
+                metadata schema for reading metadata (optional)
+    :param int, None nbr_workers: Number of workers for parallel uploads
     :param bool overwrite: Use with caution if your upload if your upload was
             interrupted and you want to overwrite existing data in database
             and storage
@@ -139,12 +123,19 @@ def upload_data_and_update_db(csv,
         assert nbr_workers > 0, \
             "Nbr of worker must be >0, not {}".format(nbr_workers)
     # Import local or S3 storage class
+    storage = 'local'
+    if 'storage' in config_json:
+        storage = config_json['storage']
     storage_class = aux_utils.get_storage_class(storage_type=storage)
+    storage_access = None
+    if 'storage_access' in config_json:
+        storage_access = config_json['storage_access']
 
     # Make sure microscope is a string
     microscope = None
-    if isinstance(config_json['microscope'], str):
-        microscope = config_json['microscope']
+    if 'microscope' in config_json:
+        if isinstance(config_json['microscope'], str):
+            microscope = config_json['microscope']
 
     if upload_type == 'frames':
         # If upload type is frames, check from frames format
@@ -270,7 +261,5 @@ if __name__ == '__main__':
         login=args.login,
         config=args.config,
         nbr_workers=args.nbr_workers,
-        storage=args.storage,
-        storage_access=args.storage_access,
         overwrite=args.overwrite,
     )
