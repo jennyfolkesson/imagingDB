@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-import numpy as np
+import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -280,7 +280,7 @@ class DatabaseOperations:
                       channels=None,
                       slices=None):
         """
-        Get S3 folder name and all file names associated with unique
+        Get storage directory name and all file names associated with unique
         project identifier.
 
         :param session: SQLAlchemy session
@@ -305,146 +305,123 @@ class DatabaseOperations:
                 .join(DataSet) \
                 .filter(DataSet.dataset_serial == dataset.dataset_serial) \
                 .one()
-
             return file_global.storage_dir, [file_global.file_name]
         else:
             # Get frames
-            all_frames = session.query(Frames) \
+            frames_query = session.query(Frames) \
                 .join(FramesGlobal) \
                 .join(DataSet) \
                 .filter(DataSet.dataset_serial == dataset.dataset_serial)
-
-            sliced_frames = self._slice_frames(
-                all_frames,
+            # Get dataframe of frames matching query only
+            frames_subset = self._get_frames_subset(
+                frames_query=frames_query,
                 positions=positions,
                 times=times,
                 channels=channels,
                 slices=slices,
             )
-            storage_dir = sliced_frames[0].frames_global.storage_dir
-
-            file_names = []
-            for f in sliced_frames:
-                file_names.append(f.file_name)
-
+            storage_dir = frames_query[0].frames_global.storage_dir
+            file_names = frames_subset['file_name'].tolist()
             return storage_dir, file_names
 
     @staticmethod
-    def _slice_frames(frames,
-                      positions=None,
-                      times=None,
-                      channels=None,
-                      slices=None):
+    def _get_frames_subset(frames_query,
+                           positions=None,
+                           times=None,
+                           channels=None,
+                           slices=None):
         """
-        Get specific slices of a set of Frames
+        Get a subset of frames from a set of Frames converted to a Pandas dataframe
 
-        :param Query frames: all of the frames to be sliced
-        :param [None, tuple(int)] positions: a tuple containing position indices
+        :param Frames frames_query: A Frames query result
+        :param [None, list(int)] positions: a tuple containing position indices
                 to be fetched use None to get all positions.
-        :param [None, tuple(int)] times: a tuple containing time indices
+        :param [None, list(int)] times: a tuple containing time indices
                 to be fetched use None to get all times.
-        :param [None, tuple] channels: a tuple containing channels
+        :param [None, list] channels: a tuple containing channels
                 (use channel names (e.g., 'Cy3') or integer indices) to be fetched.
-        :param [None, tuple] slices: a tuple containing slice indices to
+        :param [None, list] slices: a tuple containing slice indices to
                 be fetched. Use None to get all slices.
-        :return Query sliced_frames: query that yields the requested frames
-        :raises AssertionError: If illegal indices are given
-        :raises ValueError: If an illegal type is given
+        :return pandas.DataFrame frames_subset: A dataframe containing frames
+                that match the query result
+        :raises AssertionError: If no frames matches selected indices
         :raises AssertionError: If both channels and channel_ids are specified.
         """
-        sliced_frames = frames
-
-        # Filter by channel
-        if channels is None:
-            pass
-        elif type(channels) is tuple:
-            if np.all([isinstance(c, str) for c in channels]):
-                # Query channel names
-                sliced_frames = sliced_frames.filter(
-                    Frames.channel_name.in_(channels),
-                )
-            elif np.all([isinstance(c, int) for c in channels]):
-                # Query channel indices
-                sliced_frames = sliced_frames.filter(
-                    Frames.channel_idx.in_(channels),
-                )
+        # Convert query to dataframe
+        frames_subset = pd.read_sql(
+            frames_query.statement,
+            frames_query.session.bind,
+        )
+        # Filter by channels
+        if channels is not None:
+            if not isinstance(channels, list):
+                channels = [channels]
+            if all([isinstance(c, str) for c in channels]):
+                # Channel name
+                frames_subset = frames_subset[frames_subset['channel_name'].isin(channels)]
+            elif all([isinstance(c, int) for c in channels]):
+                # Channel idx
+                cond = frames_subset['channel_idx'].isin(channels)
+                frames_subset = frames_subset[cond]
             else:
-                raise ValueError('channels tuple must be either all str or',
-                                 'int, not {}'.format(channels))
-        else:
-            raise ValueError('Invalid channel query')
-
+                raise TypeError('Channels must be all str or all int')
         # Filter by slice
-        if slices is None:
-            pass
-        elif type(slices) is tuple:
-            sliced_frames = sliced_frames.filter(Frames.slice_idx.in_(slices))
-        else:
-            raise ValueError('Invalid slice query')
-
+        if slices is not None:
+            if isinstance(slices, int):
+                slices = [slices]
+            elif not isinstance(slices, list):
+                raise TypeError("invalid slices type:", type(slices))
+            frames_subset = frames_subset[frames_subset['slice_idx'].isin(slices)]
         # Filter by time
-        if times is None:
-            pass
-        elif type(times) is tuple:
-            sliced_frames = sliced_frames.filter(Frames.time_idx.in_(times))
-        else:
-            raise ValueError('Invalid time query')
-
+        if times is not None:
+            if isinstance(times, int):
+                times = [times]
+            elif not isinstance(times, list):
+                raise TypeError("Invalid times type:", type(times))
+            frames_subset = frames_subset[frames_subset['time_idx'].isin(times)]
         # Filter by position
-        if positions is None:
-            pass
-        elif type(positions) is tuple:
-            sliced_frames = sliced_frames.filter(Frames.pos_idx.in_(positions))
-        else:
-            raise ValueError('Invalid position query')
+        if positions is not None:
+            if isinstance(positions, int):
+                positions = [positions]
+            elif not isinstance(positions, list):
+                raise TypeError("Invalid positions type:", type(positions))
+            frames_subset = frames_subset[frames_subset['pos_idx'].isin(positions)]
 
-        assert sliced_frames.count() > 0,\
-            'No frames matched the query'
-
-        return sliced_frames
+        assert frames_subset.shape[0] > 0, 'No frames matched the query'
+        # Reset index
+        frames_subset = frames_subset.reset_index(drop=True)
+        # Remove jsonb and internal IDs from table
+        frames_subset = frames_subset.drop(
+            columns=['id', 'frames_global_id', 'metadata_json'],
+        )
+        return frames_subset
 
     @staticmethod
-    def _get_meta_from_frames(frames):
+    def _get_global_meta(frame):
         """
-        Extract global meta as well as info for each frame given
-        a frames query.
+        Extract global metadata from a frame.
 
-        :param list of Frames frames: Frames obtained from dataset query
+        :param Frames frame: One frame obtained from dataset query
         :return dict global_meta: Global metadata for dataset
         :return dataframe frames_meta: Metadata for each frame
         """
         # Collect global metadata that can be used to instantiate im_stack
         global_meta = {
-            "storage_dir": frames[0].frames_global.storage_dir,
-            "nbr_frames": frames[0].frames_global.nbr_frames,
-            "im_width": frames[0].frames_global.im_width,
-            "im_height": frames[0].frames_global.im_height,
-            "nbr_slices": frames[0].frames_global.nbr_slices,
-            "nbr_channels": frames[0].frames_global.nbr_channels,
-            "im_colors": frames[0].frames_global.im_colors,
-            "nbr_timepoints": frames[0].frames_global.nbr_timepoints,
-            "nbr_positions": frames[0].frames_global.nbr_positions,
-            "bit_depth": frames[0].frames_global.bit_depth,
+            "storage_dir": frame.frames_global.storage_dir,
+            "nbr_frames": frame.frames_global.nbr_frames,
+            "im_width": frame.frames_global.im_width,
+            "im_height": frame.frames_global.im_height,
+            "nbr_slices": frame.frames_global.nbr_slices,
+            "nbr_channels": frame.frames_global.nbr_channels,
+            "im_colors": frame.frames_global.im_colors,
+            "nbr_timepoints": frame.frames_global.nbr_timepoints,
+            "nbr_positions": frame.frames_global.nbr_positions,
+            "bit_depth": frame.frames_global.bit_depth,
         }
         meta_utils.validate_global_meta(global_meta)
         # Add global JSON metadata
-        global_meta["metadata_json"] = frames[0].frames_global.metadata_json
-
-        # Metadata that will be returned from the DB for each frame
-        frames_meta = meta_utils.make_dataframe(
-            nbr_frames=frames.count(),
-        )
-        for i, f in enumerate(frames):
-            frames_meta.loc[i] = [
-                f.channel_idx,
-                f.slice_idx,
-                f.time_idx,
-                f.channel_name,
-                f.file_name,
-                f.pos_idx,
-                f.sha256,
-            ]
-        return global_meta, frames_meta
+        global_meta["metadata_json"] = frame.frames_global.metadata_json
+        return global_meta
 
     def get_frames_meta(self,
                         session,
@@ -468,6 +445,7 @@ class DatabaseOperations:
                 to be fetched use None to get all channels.
         :return dict global_meta: Global metadata for dataset
         :return dataframe frames_meta: Metadata for each frame
+        :raises Assertion error: If dataset has not been split into frames
         """
         # Check if ID already exist
         dataset = session.query(DataSet) \
@@ -477,22 +455,20 @@ class DatabaseOperations:
             "This dataset has not been split into frames." \
             "Set metadata to False if downloading file"
 
-        # Get frames in datset
-        all_frames = session.query(Frames) \
+        # Query frames in datset
+        frames_query = session.query(Frames) \
             .join(FramesGlobal) \
             .join(DataSet) \
             .filter(DataSet.dataset_serial == dataset.dataset_serial) \
             .order_by(Frames.file_name)
-
         # Get the specified slices
-        sliced_frames = self._slice_frames(
-            all_frames,
+        frames_meta = self._get_frames_subset(
+            frames_query=frames_query,
             positions=positions,
             times=times,
             channels=channels,
             slices=slices,
         )
         # Get global and local metadata
-        global_meta, frames_meta = self._get_meta_from_frames(
-            sliced_frames)
+        global_meta = self._get_global_meta(frames_query[0])
         return global_meta, frames_meta

@@ -76,18 +76,26 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             self.main_dir,
             'db_credentials.json',
         )
+        # Write a config file
         self.config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_tif_id.json',
         )
+        config = {
+            "upload_type": "frames",
+            "frames_format": "tif_id",
+            "microscope": "Leica microscope CAN bus adapter",
+            "filename_parser": "parse_ml_name",
+            "storage": "s3"
+        }
+        json_ops.write_json_file(config, self.config_path)
         # Upload frames
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            storage='s3',
         )
-        # Upload file
+        # Create inputs for file upload
         self.dataset_serial_file = 'FILE-2005-06-01-01-00-00-1000'
         self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
@@ -98,14 +106,20 @@ class TestDataDownloader(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_file.json',
         )
+        config = {
+            "upload_type": "file",
+            "microscope": "Mass Spectrometry",
+            "storage": "s3",
+        }
+        json_ops.write_json_file(config, config_path)
+        # Upload file
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            storage='s3',
         )
 
     def tearDown(self):
@@ -227,16 +241,51 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage='s3',
-            channels='1',
+            channels=1,
         )
-        meta_path = os.path.join(
-            dest_dir,
-            self.dataset_serial,
-            'global_metadata.json',
-        )
-        frames_meta = pd.read_csv(meta_path)
+        download_dir = os.path.join(dest_dir, self.dataset_serial)
+        # Check frames_meta content
+        frames_meta = pd.read_csv(os.path.join(download_dir, 'frames_meta.csv'))
         for i, row in frames_meta.iterrows():
             self.assertEqual(row.channel_idx, 1)
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(i)
+            self.assertEqual(row.file_name, im_name)
+        # Check downloaded images
+        im_order = [1, 3, 5]
+        for z in range(3):
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(z)
+            im_path = os.path.join(download_dir, im_name)
+            im = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH)
+            numpy.testing.assert_array_equal(im, self.im[im_order[i], ...])
+
+    @patch('imaging_db.database.db_operations.session_scope')
+    def test_download_channel_convert_str(self, mock_session):
+        mock_session.return_value.__enter__.return_value = self.session
+        # Create dest dir
+        self.tempdir.makedir('dest_dir')
+        dest_dir = os.path.join(self.temp_path, 'dest_dir')
+        # Download data
+        data_downloader.download_data(
+            dataset_serial=self.dataset_serial,
+            login=self.credentials_path,
+            dest=dest_dir,
+            storage='s3',
+            channels='1',
+        )
+        download_dir = os.path.join(dest_dir, self.dataset_serial)
+        # Check frames_meta content
+        frames_meta = pd.read_csv(os.path.join(download_dir, 'frames_meta.csv'))
+        for i, row in frames_meta.iterrows():
+            self.assertEqual(row.channel_idx, 1)
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(i)
+            self.assertEqual(row.file_name, im_name)
+        # Check downloaded images
+        im_order = [1, 3, 5]
+        for z in range(3):
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(z)
+            im_path = os.path.join(download_dir, im_name)
+            im = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH)
+            numpy.testing.assert_array_equal(im, self.im[im_order[i], ...])
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -266,9 +315,9 @@ class TestDataDownloader(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage='s3',
-            positions='0',
-            times='0',
-            slices='1',
+            positions=0,
+            times=[0],
+            slices=1,
         )
         meta_path = os.path.join(
             dest_dir,
@@ -443,6 +492,7 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             self.im,
             description=self.description,
         )
+        # Create input arguments for data upload
         upload_csv = pd.DataFrame(
             columns=['dataset_id', 'file_name', 'description'],
         )
@@ -462,17 +512,25 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             'db_credentials.json',
         )
         self.config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_tif_id.json',
         )
+        config = {
+            "upload_type": "frames",
+            "frames_format": "tif_id",
+            "microscope": "Leica microscope CAN bus adapter",
+            "filename_parser": "parse_ml_name",
+            "storage": "local",
+            "storage_access": self.mount_point
+        }
+        json_ops.write_json_file(config, self.config_path)
         # Upload frames
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_frames,
             login=self.credentials_path,
             config=self.config_path,
-            storage_access=self.mount_point,
         )
-        # Upload file
+        # Create input args for file upload
         self.dataset_serial_file = 'FILE-2005-06-09-20-00-00-1000'
         self.file_storage_dir = os.path.join('raw_files', self.dataset_serial_file)
         self.csv_path_file = os.path.join(
@@ -483,14 +541,21 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
         upload_csv['dataset_id'] = self.dataset_serial_file
         upload_csv.to_csv(self.csv_path_file)
         config_path = os.path.join(
-            self.main_dir,
+            self.temp_path,
             'config_file.json',
         )
+        config = {
+            "upload_type": "file",
+            "microscope": "Mass Spectrometry",
+            "storage": "local",
+            "storage_access": self.mount_point
+        }
+        json_ops.write_json_file(config, config_path)
+        # Upload file
         data_uploader.upload_data_and_update_db(
             csv=self.csv_path_file,
             login=self.credentials_path,
             config=config_path,
-            storage_access=self.mount_point,
         )
 
     def tearDown(self):
@@ -575,16 +640,22 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage_access=self.mount_point,
-            channels='1',
+            channels=1,
         )
-        meta_path = os.path.join(
-            dest_dir,
-            self.dataset_serial,
-            'global_metadata.json',
-        )
-        frames_meta = pd.read_csv(meta_path)
+        download_dir = os.path.join(dest_dir, self.dataset_serial)
+        # Check frames_meta content
+        frames_meta = pd.read_csv(os.path.join(download_dir, 'frames_meta.csv'))
         for i, row in frames_meta.iterrows():
             self.assertEqual(row.channel_idx, 1)
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(i)
+            self.assertEqual(row.file_name, im_name)
+        # Check downloaded images
+        im_order = [1, 3, 5]
+        for z in range(3):
+            im_name = 'im_c001_z00{}_t000_p000.png'.format(z)
+            im_path = os.path.join(download_dir, im_name)
+            im = cv2.imread(im_path, cv2.IMREAD_ANYDEPTH)
+            numpy.testing.assert_array_equal(im, self.im[im_order[i], ...])
 
     @nose.tools.raises(AssertionError)
     @patch('imaging_db.database.db_operations.session_scope')
@@ -614,9 +685,9 @@ class TestDataDownloaderLocalStorage(db_basetest.DBBaseTest):
             login=self.credentials_path,
             dest=dest_dir,
             storage_access=self.mount_point,
-            positions='0',
-            times='0',
-            slices='1',
+            positions=0,
+            times=0,
+            slices=1,
         )
         meta_path = os.path.join(
             dest_dir,

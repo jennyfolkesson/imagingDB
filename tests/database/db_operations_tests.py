@@ -1,5 +1,6 @@
 import itertools
 import nose.tools
+import pandas as pd
 
 import tests.database.db_basetest as db_basetest
 import imaging_db.database.db_operations as db_ops
@@ -61,13 +62,6 @@ class TestDBOperations(db_basetest.DBBaseTest):
             microscope=self.microscope,
             parent_dataset=None,
         )
-        # query frames
-        self.frames = self.session.query(db_ops.Frames) \
-            .join(db_ops.FramesGlobal) \
-            .join(db_ops.DataSet) \
-            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
-            .order_by(db_ops.Frames.file_name)
-
         # Add some more datasets for queries
         self.dataset_ids = [
             'PROJECT-2010-04-01-00-00-00-0001',
@@ -85,6 +79,13 @@ class TestDBOperations(db_basetest.DBBaseTest):
                 parent_id=None,
             )
             self.session.add(new_dataset)
+        self.session.commit()
+        # query frames
+        self.frames = self.session.query(db_ops.Frames) \
+            .join(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial) \
+            .order_by(db_ops.Frames.file_name)
 
     def tearDown(self):
         super().tearDown()
@@ -270,72 +271,82 @@ class TestDBOperations(db_basetest.DBBaseTest):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
             self.assertEqual(file_names[i], im_name)
 
-    def test_slice_frames(self):
-        sliced_frames = self.db_inst._slice_frames(
-            frames=self.frames,
+    def test_get_frames_subset(self):
+        frames = self.session.query(db_ops.Frames) \
+            .join(db_ops.FramesGlobal) \
+            .join(db_ops.DataSet) \
+            .filter(db_ops.DataSet.dataset_serial == self.dataset_serial)
+        frames_subset = pd.read_sql(
+            frames.statement,
+            self.session.bind,
+        )
+        frames_subset = self.db_inst._get_frames_subset(
+            frames_query=frames,
         )
         for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
             im_name = 'im_c00{}_z00{}_t005_p050.png'.format(c, z)
-            self.assertEqual(sliced_frames[i].file_name, im_name)
+            self.assertEqual(frames_subset.loc[i, 'file_name'], im_name)
 
-    def test_slice_frames_select(self):
-        sliced_frames = self.db_inst._slice_frames(
-            frames=self.frames,
-            positions=(50,),
-            times=(5,),
-            channels=(1, 2),
-            slices=(1,),
+    def test_get_frames_subset_select(self):
+        sliced_frames = self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            positions=50,
+            times=5,
+            channels=[1, 2],
+            slices=1,
         )
         for i, c in enumerate(range(1, 3)):
             im_name = 'im_c00{}_z001_t005_p050.png'.format(c)
-            self.assertEqual(sliced_frames[i].file_name, im_name)
+            self.assertEqual(sliced_frames.loc[i, 'file_name'], im_name)
 
     @nose.tools.raises(AssertionError)
-    def test_slice_frames_no_matching_channels(self):
-        self.db_inst._slice_frames(
-            frames=self.frames,
-            channels=('1', '2'),
+    def test_get_frames_subset_no_matching_channels(self):
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            channels=['1', '2'],
         )
 
-    @nose.tools.raises(ValueError)
-    def test_slice_frames_invalid_channel(self):
-        self.db_inst._slice_frames(
-            frames=self.frames,
-            channels=[1],
+    @nose.tools.raises(TypeError)
+    def test_get_frames_subset_invalid_channels(self):
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            channels=[1, '2'],
         )
 
-    @nose.tools.raises(ValueError)
-    def test_slice_frames_invalid_channel_tuple(self):
-        self.db_inst._slice_frames(
-            frames=self.frames,
-            positions=(50,),
-            times=(5,),
-            channels=(1, '2'),
-            slices=(1,),
+    @nose.tools.raises(TypeError)
+    def test_get_frames_subset_invalid_positions(self):
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            positions='50',
         )
 
-    @nose.tools.raises(ValueError)
-    def test_slice_frames_invalid_time(self):
-        self.db_inst._slice_frames(
-            frames=self.frames,
+    @nose.tools.raises(TypeError)
+    def test_get_frames_subset_invalid_slices(self):
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            slices='5',
+        )
+
+    @nose.tools.raises(TypeError)
+    def test_get_frames_subset_invalid_times(self):
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
             times='2',
         )
 
-    @nose.tools.raises(ValueError)
-    def test_slice_frames_invalid_pos(self):
-        self.db_inst._slice_frames(
-            frames=self.frames,
-            positions=3,
+    @nose.tools.raises(AssertionError)
+    def test_get_frames_subset_no_pos(self):
+        # No matching results in query
+        self.db_inst._get_frames_subset(
+            frames_query=self.frames,
+            positions=[100],
         )
 
-    def test_get_meta_from_frames(self):
-        global_meta, frames_meta = self.db_inst._get_meta_from_frames(
-            self.frames,
-        )
+    def test_get_global_meta(self):
+        global_meta = self.db_inst._get_global_meta(self.frames[0])
         expected_meta = self.global_meta
         expected_meta['metadata_json'] = self.global_json_meta
         self.assertDictEqual(global_meta, self.global_meta)
-        self.assertTrue(frames_meta.equals(self.frames_meta))
 
     def test_get_frames_meta(self):
         global_meta, frames_meta = self.db_inst.get_frames_meta(
@@ -343,5 +354,14 @@ class TestDBOperations(db_basetest.DBBaseTest):
         )
         expected_meta = self.global_meta
         expected_meta['metadata_json'] = self.global_json_meta
-        self.assertDictEqual(global_meta, self.global_meta)
-        self.assertTrue(frames_meta.equals(self.frames_meta))
+        col_names = list(frames_meta)
+        col_names.sort()
+        expected_names = list(self.frames_meta)
+        expected_names.sort()
+        self.assertListEqual(col_names, expected_names)
+        for i, row in frames_meta.iterrows():
+            for col in expected_names:
+                self.assertEqual(
+                    row[col],
+                    self.frames_meta.loc[i, col],
+                )
