@@ -57,10 +57,11 @@ class TestTifFolderSplitter(unittest.TestCase):
                 file_name = 'img_{}_t000_p050_z00{}.tif'.format(c, z)
                 file_path = os.path.join(self.temp_path, file_name)
                 ijmeta = {"Info": json.dumps({"c": c, "z": z})}
-                tifffile.imsave(file_path,
-                                self.im + 5000 * z,
-                                ijmetadata=ijmeta,
-                                )
+                tifffile.imsave(
+                    file_path,
+                    self.im + 5000 * z,
+                    ijmetadata=ijmeta,
+                )
         # Write external metadata in dir
         self.meta_dict = {
             'Summary': {'Slices': 26,
@@ -179,6 +180,32 @@ class TestTifFolderSplitter(unittest.TestCase):
                      }
         self.frames_inst.set_frame_info(meta_dict)
 
+    def test_set_frame_info_from_file(self):
+        file_name = 'img_phase_t000_p050_z001.tif'
+        file_path = os.path.join(self.temp_path, file_name)
+        self.frames_inst.set_frame_info_from_file(file_path)
+        self.assertEqual(self.frames_inst.bit_depth, 'uint16')
+        self.assertEqual(self.frames_inst.im_colors, 1)
+        self.assertListEqual(self.frames_inst.frame_shape, [10, 15])
+
+    def test_set_frame_info_from_file_color(self):
+        self.tempdir.makedir('test_dir')
+        file_path = os.path.join(self.temp_path, 'test_dir/im_temp.tif')
+        im = np.zeros((10, 20, 3), dtype=np.uint8)
+        tifffile.imsave(file_path, im)
+        self.frames_inst.set_frame_info_from_file(file_path)
+        self.assertEqual(self.frames_inst.bit_depth, 'uint8')
+        self.assertEqual(self.frames_inst.im_colors, 3)
+        self.assertListEqual(self.frames_inst.frame_shape, [10, 20])
+
+    @nose.tools.raises(ValueError)
+    def test_set_frame_info_from_file_float(self):
+        self.tempdir.makedir('test_dir')
+        file_path = os.path.join(self.temp_path, 'test_dir/im_temp.tif')
+        im = np.zeros((10, 20, 3), dtype=np.float32)
+        tifffile.imsave(file_path, im)
+        self.frames_inst.set_frame_info_from_file(file_path)
+
     def test_set_frame_meta(self):
         parse_func = getattr(file_parsers, 'parse_sms_name')
         file_name = 'im_weird_channel_with_underscores_t020_z030_p040.tif'
@@ -211,9 +238,24 @@ class TestTifFolderSplitter(unittest.TestCase):
             filename_parser='nonexisting_function',
         )
 
-    @nose.tools.raises(FileNotFoundError)
-    def test_get_frames_no_metadata(self):
+    @patch('concurrent.futures.ProcessPoolExecutor')
+    def test_get_frames_no_metadata(self, MockPoolExecutor):
+        # Magic mocking of multiprocessing
+        MockPoolExecutor().__enter__().map = map_mock
         os.remove(self.json_filename)
         self.frames_inst.get_frames_and_metadata(
             filename_parser='parse_sms_name',
         )
+        frames_meta = self.frames_inst.get_frames_meta()
+        for i, (c, z) in enumerate(itertools.product(range(3), range(2))):
+            # Validate file name
+            expected_name = 'im_c00{}_z00{}_t000_p050.png'.format(c, z)
+            self.assertEqual(frames_meta.loc[i, 'file_name'], expected_name)
+            # Validate checksum
+            expected_sha = meta_utils.gen_sha256(self.im + 5000 * z)
+            self.assertEqual(frames_meta.loc[i, 'sha256'], expected_sha)
+            # Validate indices
+            self.assertEqual(frames_meta.loc[i, 'channel_idx'], c)
+            self.assertEqual(frames_meta.loc[i, 'slice_idx'], z)
+            self.assertEqual(frames_meta.loc[i, 'time_idx'], 0)
+            self.assertEqual(frames_meta.loc[i, 'pos_idx'], 50)

@@ -2,6 +2,7 @@ import concurrent.futures
 import glob
 import json
 import natsort
+import numpy as np
 import os
 import tifffile
 
@@ -41,8 +42,14 @@ class TifFolderSplitter(file_splitter.FileSplitter):
 
     def set_frame_info(self, meta_summary):
         """
-        Sets frame shape, im_colors and bit_depth for the class
+        Sets frame shape, im_colors and bit_depth for the class given a summary
+        in metadata.txt file containing the following key/value pairs:
+            {'PixelType': 'GRAY8',
+             'BitDepth': 8,
+             'Width': 15,
+             'Height': 10}
         Must be called once before setting global metadata
+
         :param dict meta_summary: Metadata summary
         """
         self.frame_shape = [meta_summary["Height"], meta_summary["Width"]]
@@ -57,6 +64,29 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         else:
             raise ValueError("Bit depth must be 16 or 8, not {}".format(
                 meta_summary["BitDepth"]))
+
+    def set_frame_info_from_file(self, frame_path):
+        """
+        Sets frame shape, im_colors and bit_depth for the class by opening
+        a frame and assuming all frames have the same properties.
+        Must be called once before setting global metadata
+
+        :param str frame_path: Full path to one 2D tiff image
+        """
+        im = tifffile.TiffFile(frame_path).asarray()
+        im_shape = im.shape
+        self.frame_shape = [im_shape[0], im_shape[1]]
+        self.im_colors = 1
+        if len(im_shape) > 2:
+            self.im_colors = im_shape[2]
+        if im.dtype == np.uint16:
+            self.bit_depth = "uint16"
+        elif im.dtype == np.uint8:
+            self.bit_depth = "uint8"
+        else:
+            raise ValueError(
+                "Bit depth must be 16 or 8, not {}".format(im.dtype),
+            )
 
     def _set_frame_meta(self, parse_func, file_name):
         """
@@ -112,17 +142,17 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         it will assume that the file name contains 4 integers corresponding to
         these 4 indices. If that's not the case, you can specify a custom parser
         in filename_parsers.
-        Global metadata dict is assumed to be in the same directory in a file
-        named metadata.txt.
-        The metadata.txt file is assumed to contain a minimum of the following
-        (with example values):
+        A global metadata dict is assumed to be in the same directory in a file
+        named metadata.txt. If not, the global_json will be empty and frame
+        info will be determined from the first frame.
+        The metadata.txt file (if there) is assumed to contain a minimum of the
+        following (with example values):
             'Summary': {
                 'PixelType': 'GRAY16',
-                'BitDepth': 8,
+                'BitDepth': 16,
                 'Width': 15,
                 'Height': 10
             }
-        TODO: Make tiffolder work even if there is no metadata.txt file
 
         :param str filename_parser: Function name in filename_parsers.py
         """
@@ -140,14 +170,16 @@ class TifFolderSplitter(file_splitter.FileSplitter):
         )
         nbr_frames = len(frame_paths)
 
-        try:
+        metadata_path = os.path.join(self.data_path, "metadata.txt")
+        if len(glob.glob(metadata_path)) == 1:
             self.global_json = json_ops.read_json_file(
                 os.path.join(self.data_path, "metadata.txt"),
             )
-        except FileNotFoundError as e:
-            raise FileNotFoundError("Can't find metadata.txt file in directory", e)
-
-        self.set_frame_info(self.global_json["Summary"])
+            self.set_frame_info(self.global_json["Summary"])
+        else:
+            # No metadata.txt file in dir, get frame info from first frame
+            self.set_frame_info_from_file(frame_paths[0])
+            self.global_json = {}
 
         self.frames_meta = meta_utils.make_dataframe(nbr_frames=nbr_frames)
         self.frames_json = []
