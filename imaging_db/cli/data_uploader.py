@@ -64,8 +64,10 @@ def upload_data_and_update_db(csv,
                               nbr_workers=None,
                               overwrite=False):
     """
-    Split, crop volumes and flatfield correct images in input and target
-    directories. Writes output as npy files for faster reading while training.
+    Takes a csv file in which each row represents a dataset, uploads the data
+    to storage and metadata to database. If 'frames' is selected as upload
+    type, each dataset will be split into individual 2D frames before moving
+    to storage.
     TODO: Add logging instead of printing
 
     :param str login: Full path to json file containing login credentials
